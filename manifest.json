@@ -1,0 +1,14 @@
+{
+  "name": "研时 · 考研专注钟",
+  "short_name": "研时",
+  "description": "为考研备考设计的番茄钟、专注记录与待办清单。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f2ec",
+  "theme_color": "#173c34",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#173c34" />
+    <meta name="description" content="为考研备考设计的本地番茄钟、专注记录与待办清单。" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>研时 · 考研专注钟</title>
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.7 1.7M9 2h6M12 2v3"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.58 15 1.7 1.7 0 0 0 3 14H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 10 3.02V3h4v.08a1.7 1.7 0 0 0 1.05 1.52 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.82 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.98 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12.8 2.5c.5 3-1.1 4.5-2.3 6.1-1.1 1.4-1.9 2.6-1 4.4.2-1.7 1.2-2.8 2.3-4 1.5 1.5 3.3 3.4 3.3 6.1a3.2 3.2 0 0 1-6.4 0c0-.4.1-.8.2-1.2-1.5 1.1-2.4 2.7-2.4 4.1A5.5 5.5 0 0 0 17.5 18c0-4.4-1.7-9.8-4.7-15.5Z"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+      <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark"><span></span></span>
+          <div><strong>研时</strong><small>YAN SHI</small></div>
+        </div>
+
+        <nav class="nav-list" aria-label="主导航">
+          <button class="nav-item active" data-view="timer">
+            <svg><use href="#i-timer"></use></svg><span>专注计时</span>
+          </button>
+          <button class="nav-item" data-view="history">
+            <svg><use href="#i-chart"></use></svg><span>专注记录</span>
+          </button>
+          <button class="nav-item" data-view="tasks">
+            <svg><use href="#i-list"></use></svg><span>待办清单</span>
+            <b class="nav-badge" id="navTodoCount">0</b>
+          </button>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+        <div class="streak-card">
+          <div class="streak-icon"><svg><use href="#i-flame"></use></svg></div>
+          <div><span>连续专注</span><strong><em id="streakDays">0</em> 天</strong></div>
+        </div>
+        <p class="sidebar-quote">“日日行，不怕千万里。”</p>
+        <button class="nav-item settings-trigger" id="openSettings">
+          <svg><use href="#i-settings"></use></svg><span>偏好设置</span>
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="todayDate"></p>
+            <h1 id="pageTitle">专注计时</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="install-button hidden" id="installApp"><svg><use href="#i-download"></use></svg>安装到桌面</button>
+            <div class="today-target">
+              <span>今日目标</span>
+              <div class="target-track"><i id="targetProgress"></i></div>
+              <strong id="targetLabel">0 / 6h</strong>
+            </div>
+            <div class="avatar">研</div>
+          </div>
+        </header>
+
+        <section class="view active" id="view-timer">
+          <div class="summary-grid">
+            <article class="summary-card">
+              <span class="summary-icon green"><svg><use href="#i-clock"></use></svg></span>
+              <div><small>今日专注</small><strong id="todayFocus">0<em> 分钟</em></strong></div>
+              <p id="todayFocusHint">从第一颗番茄开始</p>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon coral"><svg><use href="#i-check"></use></svg></span>
+              <div><small>完成番茄</small><strong id="todaySessions">0<em> 个</em></strong></div>
+              <p>每一次投入都算数</p>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon amber"><svg><use href="#i-list"></use></svg></span>
+              <div><small>待办任务</small><strong id="todayTodos">0<em> 项</em></strong></div>
+              <p id="todoSummaryHint">先写下今天要做的事</p>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="timer-panel panel">
+              <div class="mode-tabs" role="tablist">
+                <button class="mode-tab active" data-mode="focus">专注</button>
+                <button class="mode-tab" data-mode="short">短休息</button>
+                <button class="mode-tab" data-mode="long">长休息</button>
+              </div>
+
+              <div class="timer-body">
+                <div class="timer-ring" id="timerRing">
+                  <svg viewBox="0 0 260 260" aria-hidden="true">
+                    <circle class="ring-bg" cx="130" cy="130" r="116"></circle>
+                    <circle class="ring-progress" id="ringProgress" cx="130" cy="130" r="116"></circle>
+                  </svg>
+                  <div class="timer-copy">
+                    <span id="timerStatus">准备开始</span>
+                    <strong id="timerDisplay">25:00</strong>
+                    <small id="timerRound">第 1 个番茄</small>
+                  </div>
+                </div>
+              </div>
+
+              <label class="focus-task-label" for="focusTask">本次专注任务</label>
+              <div class="task-select-wrap">
+                <select id="focusTask"><option value="">暂不关联任务</option></select>
+                <svg><use href="#i-list"></use></svg>
+              </div>
+
+              <div class="timer-actions">
+                <button class="icon-button" id="resetTimer" title="重置计时"><svg><use href="#i-rotate"></use></svg></button>
+                <button class="primary-button" id="toggleTimer"><svg><use href="#i-play"></use></svg><span>开始专注</span></button>
+                <button class="finish-button" id="finishTimer" title="提前完成并记录">完成本次</button>
+              </div>
+              <p class="shortcut-hint"><kbd>Space</kbd> 开始 / 暂停 <i>·</i> <kbd>R</kbd> 重置</p>
+            </article>
+
+            <aside class="todo-panel panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">TODAY</p><h2>今日待办</h2></div>
+                <button class="text-link" data-go="tasks">查看全部 <svg><use href="#i-arrow"></use></svg></button>
+              </div>
+              <form class="quick-add" id="quickAddForm">
+                <input id="quickAddInput" maxlength="80" placeholder="添加一项学习任务…" autocomplete="off" />
+                <button aria-label="添加任务"><svg><use href="#i-plus"></use></svg></button>
+              </form>
+              <div class="todo-list compact" id="quickTodoList"></div>
+              <div class="todo-progress-block">
+                <div><span>今日完成度</span><strong id="todoProgressText">0%</strong></div>
+                <div class="todo-progress"><i id="todoProgressBar"></i></div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="focus-note">
+            <span>今日寄语</span>
+            <p id="dailyQuote">不必一次看清全部台阶，迈出第一步就好。</p>
+          </div>
+        </section>
+
+        <section class="view" id="view-history">
+          <div class="history-summary">
+            <article><span>本周专注</span><strong id="weekFocus">0h 0m</strong><small id="weekCompare">本周从此刻开始</small></article>
+            <article><span>累计专注</span><strong id="totalFocus">0h 0m</strong><small id="totalDays">0 个专注日</small></article>
+            <article><span>最佳单日</span><strong id="bestDay">0h 0m</strong><small id="bestDayDate">还没有记录</small></article>
+          </div>
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">FOCUS TREND</p><h2>专注趋势</h2></div>
+              <div class="range-switch">
+                <button class="active" data-range="7">近 7 天</button>
+                <button data-range="30">近 30 天</button>
+              </div>
+            </div>
+            <div class="chart-wrap" id="focusChart"></div>
+          </article>
+          <article class="panel records-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">SESSIONS</p><h2>专注明细</h2></div>
+              <span class="record-count" id="recordCount">共 0 条</span>
+            </div>
+            <div class="records-list" id="recordsList"></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-tasks">
+          <article class="tasks-hero panel">
+            <div>
+              <p class="eyebrow">STUDY PLAN</p>
+              <h2>把目标拆成今天能完成的一小步</h2>
+              <p>任务不必写得宏大，清晰到可以立刻开始就够了。</p>
+            </div>
+            <div class="task-ring"><strong id="taskRingValue">0%</strong><span>整体完成</span></div>
+          </article>
+          <article class="panel full-tasks-panel">
+            <form class="task-add-form" id="taskAddForm">
+              <span><svg><use href="#i-plus"></use></svg></span>
+              <input id="taskAddInput" maxlength="80" placeholder="例如：背诵英语单词 50 个" autocomplete="off" />
+              <button>添加任务</button>
+            </form>
+            <div class="task-toolbar">
+              <div class="task-filters">
+                <button class="active" data-task-filter="all">全部</button>
+                <button data-task-filter="open">待完成</button>
+                <button data-task-filter="done">已完成</button>
+              </div>
+              <button class="clear-completed" id="clearCompleted">清除已完成</button>
+            </div>
+            <div class="todo-list full" id="fullTodoList"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="settingsModal" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="modal-head"><div><p class="eyebrow">PREFERENCES</p><h2 id="settingsTitle">偏好设置</h2></div><button id="closeSettings" aria-label="关闭"><svg><use href="#i-x"></use></svg></button></div>
+        <form id="settingsForm">
+          <div class="settings-section">
+            <h3>计时时长 <span>（分钟）</span></h3>
+            <div class="duration-grid">
+              <label>专注<input id="focusDuration" type="number" min="1" max="120" /></label>
+              <label>短休息<input id="shortDuration" type="number" min="1" max="60" /></label>
+              <label>长休息<input id="longDuration" type="number" min="1" max="90" /></label>
+            </div>
+          </div>
+          <div class="settings-section">
+            <label class="setting-row"><span><strong>完成提示音</strong><small>计时结束时播放轻柔提示音</small></span><input id="soundEnabled" class="toggle" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>自动开始休息</strong><small>专注结束后自动进入休息计时</small></span><input id="autoBreak" class="toggle" type="checkbox" /></label>
+          </div>
+          <div class="settings-section target-setting">
+            <label><span><strong>每日专注目标</strong><small>用于首页显示今日进度</small></span><div><input id="dailyTarget" type="number" min="1" max="16" /><b>小时</b></div></label>
+          </div>
+          <div class="data-save-note">
+            <svg><use href="#i-check"></use></svg>
+            <div><strong>历史记录已开启自动保存</strong><span id="dataSaveLocation">数据会保存在当前浏览器中</span></div>
+          </div>
+          <button class="save-settings">保存设置</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"><svg><use href="#i-check"></use></svg><span></span></div>
+    <script src="app.js"></script>
+  </body>
+</html>
