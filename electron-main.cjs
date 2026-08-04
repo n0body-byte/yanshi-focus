@@ -1,32 +1,22 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const { createStorageManager } = require("./storage-manager.cjs");
 
 // 固定数据目录，避免应用升级、安装路径变化或使用便携版时丢失历史记录。
 app.setPath("userData", process.env.YANSHI_DATA_DIR || path.join(app.getPath("appData"), "YanShi"));
 app.setAppUserModelId("com.yanshi.focus");
 
 const DATA_FILE = path.join(app.getPath("userData"), "yanshi-data.json");
-const TEMP_FILE = `${DATA_FILE}.tmp`;
+const BACKUP_DIR = path.join(app.getPath("userData"), "backups");
+const storageManager = createStorageManager({ dataFile: DATA_FILE, backupDir: BACKUP_DIR });
 const TEST_MODE = process.env.YANSHI_TEST_MODE === "1";
 let mainWindow = null;
 let pendingData = null;
 let saveTimer = null;
 
 function loadData() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) return null;
-    const content = fs.readFileSync(DATA_FILE, "utf8");
-    JSON.parse(content);
-    return content;
-  } catch (error) {
-    try {
-      if (fs.existsSync(DATA_FILE)) {
-        fs.copyFileSync(DATA_FILE, `${DATA_FILE}.corrupt-${Date.now()}`);
-      }
-    } catch { /* 保留原文件失败时仍允许应用启动。 */ }
-    return null;
-  }
+  return storageManager.loadData();
 }
 
 function flushData() {
@@ -36,9 +26,7 @@ function flushData() {
   clearTimeout(saveTimer);
   saveTimer = null;
   try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    fs.writeFileSync(TEMP_FILE, content, "utf8");
-    fs.renameSync(TEMP_FILE, DATA_FILE);
+    storageManager.saveData(content);
   } catch (error) {
     pendingData = content;
     console.error("保存专注数据失败：", error.message);
@@ -46,9 +34,8 @@ function flushData() {
 }
 
 function queueDataSave(content) {
-  if (typeof content !== "string" || content.length > 10 * 1024 * 1024) return;
   try {
-    JSON.parse(content);
+    storageManager.validateContent(content);
   } catch {
     return;
   }
@@ -60,6 +47,49 @@ function queueDataSave(content) {
 ipcMain.on("storage:load", event => { event.returnValue = loadData(); });
 ipcMain.on("storage:path", event => { event.returnValue = DATA_FILE; });
 ipcMain.on("storage:save", (_event, content) => queueDataSave(content));
+
+ipcMain.handle("storage:info", () => storageManager.getInfo());
+
+ipcMain.handle("storage:export", async (_event, content) => {
+  storageManager.validateContent(content);
+  const date = new Date().toISOString().slice(0, 10);
+  const options = {
+    title: "导出研时数据",
+    defaultPath: path.join(app.getPath("documents"), `研时数据-${date}.json`),
+    filters: [{ name: "JSON 数据文件", extensions: ["json"] }]
+  };
+  const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+  if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+  fs.writeFileSync(result.filePath, content, "utf8");
+  return { ok: true, path: result.filePath };
+});
+
+ipcMain.handle("storage:import", async () => {
+  const options = {
+    title: "导入研时数据",
+    properties: ["openFile"],
+    filters: [{ name: "JSON 数据文件", extensions: ["json"] }]
+  };
+  const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
+  if (result.canceled || !result.filePaths[0]) return { ok: false, canceled: true };
+  const filePath = result.filePaths[0];
+  if (fs.statSync(filePath).size > 10 * 1024 * 1024) throw new Error("数据文件超过 10 MB");
+  const content = fs.readFileSync(filePath, "utf8");
+  storageManager.validateContent(content);
+  return { ok: true, path: filePath, content };
+});
+
+ipcMain.handle("storage:backup-now", (_event, content) => {
+  const backupPath = storageManager.createManualBackup(content);
+  return { ok: true, path: backupPath, ...storageManager.getInfo() };
+});
+
+ipcMain.handle("storage:open-folder", async () => {
+  const info = storageManager.getInfo();
+  if (fs.existsSync(DATA_FILE)) shell.showItemInFolder(DATA_FILE);
+  else await shell.openPath(info.dataDir);
+  return { ok: true };
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({

@@ -1,6 +1,6 @@
 {
   "name": "yanshi-focus",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "面向考研备考的番茄钟、专注历史与待办清单",
   "main": "electron-main.cjs",
   "author": "YanShi",
@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron .",
     "icon": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/generate-icon.ps1",
+    "test": "node --test scripts/*.test.cjs",
     "dist": "npm run icon && electron-builder --win nsis portable"
   },
   "build": {
@@ -24,6 +25,7 @@
       "app.js",
       "electron-main.cjs",
       "preload.cjs",
+      "storage-manager.cjs",
       "build/icon.ico",
       "assets/**/*",
       "manifest.json",

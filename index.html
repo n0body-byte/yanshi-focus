@@ -28,6 +28,9 @@
       <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5h7l2-2h9v13H3v-11Z"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.2 3 7.8 7.5 9.5 4.5-1.7 7.5-5.3 7.5-9.5V6L12 3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></symbol>
     </svg>
 
     <div class="app-shell">
@@ -229,16 +232,29 @@
           <div class="settings-section target-setting">
             <label><span><strong>每日专注目标</strong><small>用于首页显示今日进度</small></span><div><input id="dailyTarget" type="number" min="1" max="16" /><b>小时</b></div></label>
           </div>
+          <div class="settings-section data-safety-section">
+            <div class="settings-section-title">
+              <div><h3>数据安全中心</h3><p id="dataBackupStatus">正在读取备份状态…</p></div>
+              <span class="backup-count" id="backupCountBadge">0 / 7</span>
+            </div>
+            <div class="data-action-grid">
+              <button type="button" id="exportData"><svg><use href="#i-download"></use></svg><span><strong>导出数据</strong><small>保存完整 JSON 备份</small></span></button>
+              <button type="button" id="importData"><svg><use href="#i-upload"></use></svg><span><strong>导入数据</strong><small>从备份恢复全部记录</small></span></button>
+              <button type="button" id="backupNow"><svg><use href="#i-shield"></use></svg><span><strong>立即备份</strong><small>创建一个手动快照</small></span></button>
+              <button type="button" id="openDataFolder" disabled><svg><use href="#i-folder"></use></svg><span><strong>打开目录</strong><small>查看数据与自动备份</small></span></button>
+            </div>
+            <input class="hidden" id="importFileInput" type="file" accept="application/json,.json" />
+          </div>
           <div class="data-save-note">
-            <svg><use href="#i-check"></use></svg>
-            <div><strong>历史记录已开启自动保存</strong><span id="dataSaveLocation">数据会保存在当前浏览器中</span></div>
+            <svg><use href="#i-shield"></use></svg>
+            <div><strong>自动保存与滚动备份已开启</strong><span id="dataSaveLocation">数据会保存在当前浏览器中</span></div>
           </div>
           <button class="save-settings">保存设置</button>
         </form>
       </div>
     </div>
 
-    <div class="toast" id="toast" role="status"><svg><use href="#i-check"></use></svg><span></span></div>
+    <div class="toast" id="toast" role="status"><svg><use href="#i-check"></use></svg><span></span><button class="hidden" id="toastAction" type="button">撤销</button></div>
     <script src="app.js"></script>
   </body>
 </html>

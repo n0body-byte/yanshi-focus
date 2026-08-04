@@ -1,4 +1,6 @@
 const STORAGE_KEY = "yanshi-focus-v1";
+const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
+const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 
 const defaultState = {
@@ -14,6 +16,7 @@ let historyRange = 7;
 let taskFilter = "all";
 let deferredInstallPrompt = null;
 let toastTimeout = null;
+let toastActionHandler = null;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -22,19 +25,7 @@ function loadState() {
   try {
     const desktopData = window.yanshiStorage?.load?.();
     const saved = JSON.parse(desktopData || localStorage.getItem(STORAGE_KEY));
-    if (!saved) return structuredClone(defaultState);
-    const merged = {
-      settings: { ...defaultState.settings, ...(saved.settings || {}) },
-      todos: Array.isArray(saved.todos) ? saved.todos : [],
-      sessions: Array.isArray(saved.sessions) ? saved.sessions : [],
-      timer: { ...defaultState.timer, ...(saved.timer || {}) }
-    };
-    const expectedTotal = merged.settings[merged.timer.mode] * 60;
-    if (!merged.timer.total || merged.timer.total < 60) {
-      merged.timer.total = expectedTotal;
-      merged.timer.remaining = expectedTotal;
-    }
-    return merged;
+    return normalizeState(saved);
   } catch {
     return structuredClone(defaultState);
   }
@@ -42,8 +33,107 @@ function loadState() {
 
 function saveState() {
   const serialized = JSON.stringify(state);
+  const previous = localStorage.getItem(STORAGE_KEY);
+  if (!window.yanshiStorage?.isDesktop && previous && previous !== serialized) {
+    createBrowserBackup(previous, "auto");
+  }
   localStorage.setItem(STORAGE_KEY, serialized);
   window.yanshiStorage?.save?.(serialized);
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+
+function safeDate(value, fallback = new Date().toISOString()) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
+}
+
+function normalizeState(saved, { stopTimer = false } = {}) {
+  if (!saved || typeof saved !== "object" || Array.isArray(saved)) return structuredClone(defaultState);
+  const settings = {
+    focus: clampNumber(saved.settings?.focus, 1, 120, defaultState.settings.focus),
+    short: clampNumber(saved.settings?.short, 1, 60, defaultState.settings.short),
+    long: clampNumber(saved.settings?.long, 1, 90, defaultState.settings.long),
+    dailyTarget: clampNumber(saved.settings?.dailyTarget, 1, 16, defaultState.settings.dailyTarget),
+    sound: saved.settings?.sound !== false,
+    autoBreak: saved.settings?.autoBreak === true
+  };
+  const todos = (Array.isArray(saved.todos) ? saved.todos : []).slice(0, 10000).map(todo => ({
+    id: typeof todo?.id === "string" ? todo.id : uid("todo"),
+    title: String(todo?.title || "未命名任务").slice(0, 80),
+    completed: todo?.completed === true,
+    createdAt: safeDate(todo?.createdAt),
+    completedAt: todo?.completedAt ? safeDate(todo.completedAt) : null
+  }));
+  const sessions = (Array.isArray(saved.sessions) ? saved.sessions : []).slice(0, 50000).map(session => {
+    const startedAt = safeDate(session?.startedAt);
+    return {
+      id: typeof session?.id === "string" ? session.id : uid("session"),
+      type: "focus",
+      startedAt,
+      endedAt: safeDate(session?.endedAt, startedAt),
+      durationSeconds: clampNumber(session?.durationSeconds, 0, 24 * 60 * 60, 0),
+      plannedSeconds: clampNumber(session?.plannedSeconds, 60, 24 * 60 * 60, 25 * 60),
+      completed: session?.completed === true,
+      taskId: typeof session?.taskId === "string" ? session.taskId : "",
+      taskTitle: String(session?.taskTitle || "自由专注").slice(0, 80)
+    };
+  }).filter(session => session.durationSeconds >= 60);
+  const timerSource = saved.timer || {};
+  const mode = ["focus", "short", "long"].includes(timerSource.mode) ? timerSource.mode : "focus";
+  const expectedTotal = settings[mode] * 60;
+  const total = clampNumber(timerSource.total, 60, 24 * 60 * 60, expectedTotal);
+  const endAt = Number(timerSource.endAt);
+  const timer = {
+    mode,
+    remaining: clampNumber(timerSource.remaining, 0, total, total),
+    total,
+    running: !stopTimer && timerSource.running === true && Number.isFinite(endAt),
+    endAt: !stopTimer && Number.isFinite(endAt) ? endAt : null,
+    rounds: Math.floor(clampNumber(timerSource.rounds, 0, 100000, 0)),
+    taskId: typeof timerSource.taskId === "string" ? timerSource.taskId : ""
+  };
+  return { settings, todos, sessions, timer };
+}
+
+function readBrowserBackups() {
+  try {
+    const backups = JSON.parse(localStorage.getItem(BROWSER_BACKUPS_KEY));
+    return Array.isArray(backups) ? backups.filter(item => item?.createdAt && typeof item.content === "string").slice(0, MAX_BACKUPS) : [];
+  } catch {
+    return [];
+  }
+}
+
+function createBrowserBackup(content, kind = "manual", force = false) {
+  try {
+    JSON.parse(content);
+    const backups = readBrowserBackups();
+    const today = localDateKey();
+    if (!force && kind === "auto" && backups.some(item => item.kind === "auto" && localDateKey(new Date(item.createdAt)) === today)) return;
+    backups.unshift({ id: uid("backup"), createdAt: new Date().toISOString(), kind, content });
+    localStorage.setItem(BROWSER_BACKUPS_KEY, JSON.stringify(backups.slice(0, MAX_BACKUPS)));
+  } catch { /* 浏览器存储空间不足时不影响主数据保存。 */ }
+}
+
+function buildBackupFileContent() {
+  return JSON.stringify({
+    format: "yanshi-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    data: state
+  }, null, 2);
+}
+
+function parseBackupContent(content) {
+  if (typeof content !== "string" || new Blob([content]).size > 10 * 1024 * 1024) throw new Error("备份文件无效或超过 10 MB");
+  const parsed = JSON.parse(content);
+  const data = parsed?.format === "yanshi-backup" ? parsed.data : parsed;
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("备份内容格式不正确");
+  return normalizeState(data, { stopTimer: true });
 }
 
 function uid(prefix = "id") {
@@ -311,12 +401,21 @@ function toggleTodo(id) {
 }
 
 function deleteTodo(id) {
-  state.todos = state.todos.filter(item => item.id !== id);
-  if (state.timer.taskId === id) state.timer.taskId = "";
+  const index = state.todos.findIndex(item => item.id === id);
+  if (index < 0) return;
+  const [removed] = state.todos.splice(index, 1);
+  const wasSelected = state.timer.taskId === id;
+  if (wasSelected) state.timer.taskId = "";
   saveState();
   renderTodos();
   renderSummary();
-  showToast("任务已删除");
+  showUndoToast("任务已删除", () => {
+    state.todos.splice(index, 0, removed);
+    if (wasSelected && !state.timer.taskId) state.timer.taskId = id;
+    saveState();
+    renderTodos();
+    renderSummary();
+  });
 }
 
 function todoHTML(todo, full = false) {
@@ -421,11 +520,18 @@ function renderRecords() {
 
 function deleteSession(id) {
   if (!confirm("确定删除这条专注记录吗？删除后今日累计也会相应减少。")) return;
-  state.sessions = state.sessions.filter(session => session.id !== id);
+  const index = state.sessions.findIndex(session => session.id === id);
+  if (index < 0) return;
+  const [removed] = state.sessions.splice(index, 1);
   saveState();
   renderSummary();
   renderHistory();
-  showToast("专注记录已删除");
+  showUndoToast("专注记录已删除", () => {
+    state.sessions.splice(index, 0, removed);
+    saveState();
+    renderSummary();
+    renderHistory();
+  });
 }
 
 function escapeHTML(value) {
@@ -441,12 +547,31 @@ function navigate(view) {
   if (view === "tasks") renderTodos();
 }
 
-function showToast(message) {
+function showToast(message, { actionLabel = "", onAction = null, duration = 2200 } = {}) {
   const toast = $("#toast");
+  const actionButton = $("#toastAction");
   toast.querySelector("span").textContent = message;
+  toastActionHandler = typeof onAction === "function" ? onAction : null;
+  actionButton.textContent = actionLabel;
+  actionButton.classList.toggle("hidden", !toastActionHandler);
   toast.classList.add("show");
   clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => toast.classList.remove("show"), 2200);
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove("show");
+    toastActionHandler = null;
+    actionButton.classList.add("hidden");
+  }, duration);
+}
+
+function showUndoToast(message, undo) {
+  showToast(message, {
+    actionLabel: "撤销",
+    duration: 6000,
+    onAction: () => {
+      undo();
+      showToast("已撤销删除");
+    }
+  });
 }
 
 function openSettings() {
@@ -458,11 +583,123 @@ function openSettings() {
   $("#autoBreak").checked = state.settings.autoBreak;
   $("#settingsModal").classList.add("open");
   $("#settingsModal").setAttribute("aria-hidden", "false");
+  refreshDataSafetyInfo();
 }
 
 function closeSettings() {
   $("#settingsModal").classList.remove("open");
   $("#settingsModal").setAttribute("aria-hidden", "true");
+}
+
+function formatBackupTime(value) {
+  if (!value) return "尚未生成备份";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "备份时间未知";
+  return `最近备份：${date.toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}`;
+}
+
+async function refreshDataSafetyInfo() {
+  const status = $("#dataBackupStatus");
+  const badge = $("#backupCountBadge");
+  const folderButton = $("#openDataFolder");
+  const storageLocation = $("#dataSaveLocation");
+  if (!status || !badge) return;
+  if (window.yanshiStorage?.isDesktop) {
+    try {
+      const info = await window.yanshiStorage.getInfo();
+      badge.textContent = `${info.backupCount} / ${info.maxBackups}`;
+      status.textContent = `${formatBackupTime(info.latestBackupAt)} · 自动保留最近 ${info.maxBackups} 份`;
+      storageLocation.textContent = `数据文件：${info.dataPath}`;
+      folderButton.disabled = false;
+      return;
+    } catch {
+      status.textContent = "暂时无法读取桌面备份状态";
+    }
+  }
+  const backups = readBrowserBackups();
+  badge.textContent = `${backups.length} / ${MAX_BACKUPS}`;
+  status.textContent = `${formatBackupTime(backups[0]?.createdAt)} · 保存在当前浏览器`;
+  storageLocation.textContent = "数据与快照保存在当前浏览器中，请定期导出文件备份";
+  folderButton.disabled = true;
+}
+
+async function handleExportData() {
+  const content = buildBackupFileContent();
+  try {
+    if (window.yanshiStorage?.isDesktop) {
+      const result = await window.yanshiStorage.exportData(content);
+      if (!result?.ok) return;
+    } else {
+      const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `研时数据-${localDateKey()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+    showToast("数据已导出");
+  } catch (error) {
+    showToast(error?.message || "数据导出失败");
+  }
+}
+
+async function applyImportedContent(content) {
+  let importedState;
+  try {
+    importedState = parseBackupContent(content);
+  } catch (error) {
+    showToast(error?.message || "无法读取备份文件");
+    return;
+  }
+  if (!confirm("导入会替换当前任务、专注记录和设置。继续前会先创建一份当前数据备份，确定导入吗？")) return;
+  try {
+    const currentContent = JSON.stringify(state);
+    if (window.yanshiStorage?.isDesktop) await window.yanshiStorage.backupNow(currentContent);
+    else createBrowserBackup(currentContent, "manual", true);
+    stopTimerLoop();
+    state = importedState;
+    saveState();
+    renderAll();
+    await refreshDataSafetyInfo();
+    closeSettings();
+    showToast(`已恢复 ${state.todos.length} 项任务和 ${state.sessions.length} 条专注记录`);
+  } catch (error) {
+    showToast(error?.message || "数据导入失败");
+  }
+}
+
+async function handleImportData() {
+  try {
+    if (window.yanshiStorage?.isDesktop) {
+      const result = await window.yanshiStorage.importData();
+      if (result?.ok) await applyImportedContent(result.content);
+    } else {
+      $("#importFileInput").click();
+    }
+  } catch (error) {
+    showToast(error?.message || "数据导入失败");
+  }
+}
+
+async function handleBackupNow() {
+  try {
+    const content = JSON.stringify(state);
+    if (window.yanshiStorage?.isDesktop) await window.yanshiStorage.backupNow(content);
+    else createBrowserBackup(content, "manual", true);
+    await refreshDataSafetyInfo();
+    showToast("手动备份已创建");
+  } catch (error) {
+    showToast(error?.message || "创建备份失败");
+  }
+}
+
+async function handleOpenDataFolder() {
+  try {
+    if (window.yanshiStorage?.openFolder) await window.yanshiStorage.openFolder();
+  } catch (error) {
+    showToast(error?.message || "无法打开数据目录");
+  }
 }
 
 function saveSettings(event) {
@@ -520,11 +757,17 @@ function bindEvents() {
   $("#clearCompleted").addEventListener("click", () => {
     const count = state.todos.filter(todo => todo.completed).length;
     if (!count) return showToast("没有已完成的任务");
+    const previousTodos = state.todos.map(todo => ({ ...todo }));
     state.todos = state.todos.filter(todo => !todo.completed);
     saveState();
     renderTodos();
     renderSummary();
-    showToast(`已清除 ${count} 项已完成任务`);
+    showUndoToast(`已清除 ${count} 项已完成任务`, () => {
+      state.todos = previousTodos;
+      saveState();
+      renderTodos();
+      renderSummary();
+    });
   });
 
   $$("[data-range]").forEach(button => button.addEventListener("click", () => {
@@ -542,6 +785,26 @@ function bindEvents() {
   $("#closeSettings").addEventListener("click", closeSettings);
   $("#settingsModal").addEventListener("click", event => { if (event.target === $("#settingsModal")) closeSettings(); });
   $("#settingsForm").addEventListener("submit", saveSettings);
+  $("#exportData").addEventListener("click", handleExportData);
+  $("#importData").addEventListener("click", handleImportData);
+  $("#backupNow").addEventListener("click", handleBackupNow);
+  $("#openDataFolder").addEventListener("click", handleOpenDataFolder);
+  $("#importFileInput").addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return showToast("备份文件超过 10 MB");
+    await applyImportedContent(await file.text());
+  });
+  $("#toastAction").addEventListener("click", () => {
+    const handler = toastActionHandler;
+    if (!handler) return;
+    clearTimeout(toastTimeout);
+    toastActionHandler = null;
+    $("#toast").classList.remove("show");
+    $("#toastAction").classList.add("hidden");
+    handler();
+  });
 
   document.addEventListener("keydown", event => {
     const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
@@ -588,10 +851,7 @@ function init() {
     "你认真度过的每一分钟，都在回答未来。"
   ];
   $("#dailyQuote").textContent = quotes[new Date().getDate() % quotes.length];
-  const storageLocation = $("#dataSaveLocation");
-  if (storageLocation && window.yanshiStorage?.isDesktop) {
-    storageLocation.textContent = `历史记录自动保存至 ${window.yanshiStorage.getDataPath()}`;
-  }
+  refreshDataSafetyInfo();
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("service-worker.js").catch(() => {});
   }
