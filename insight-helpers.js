@@ -72,5 +72,15 @@
     };
   }
 
-  return { analyzeFocusSessions, getTimeBand };
+  function filterFocusRecords(sessions, status = "all", query = "") {
+    const normalizedQuery = String(query).trim().toLocaleLowerCase("zh-CN");
+    return (Array.isArray(sessions) ? sessions : []).filter(session => {
+      if (session?.type !== "focus") return false;
+      if (status === "completed" && session.completed !== true) return false;
+      if (status === "early" && session.completed === true) return false;
+      return !normalizedQuery || String(session.taskTitle || "自由专注").toLocaleLowerCase("zh-CN").includes(normalizedQuery);
+    });
+  }
+
+  return { analyzeFocusSessions, filterFocusRecords, getTimeBand };
 });

@@ -199,7 +199,11 @@
           <article class="panel records-panel">
             <div class="panel-heading">
               <div><p class="eyebrow">SESSIONS</p><h2>专注明细</h2></div>
-              <span class="record-count" id="recordCount">共 0 条</span>
+              <div class="record-tools">
+                <label class="record-search"><svg><use href="#i-search"></use></svg><input id="recordSearch" type="search" maxlength="80" placeholder="搜索任务" aria-label="搜索专注记录" /></label>
+                <select id="recordFilter" aria-label="筛选专注记录"><option value="all">全部记录</option><option value="completed">完整番茄</option><option value="early">提前完成</option></select>
+                <span class="record-count" id="recordCount">共 0 条</span>
+              </div>
             </div>
             <div class="records-list" id="recordsList"></div>
           </article>

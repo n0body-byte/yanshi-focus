@@ -3,7 +3,7 @@ const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
 const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
-const { analyzeFocusSessions } = window.YanShiInsightHelpers;
+const { analyzeFocusSessions, filterFocusRecords } = window.YanShiInsightHelpers;
 
 const defaultState = {
   settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, keepAwake: true, dailyTarget: 6 },
@@ -17,6 +17,8 @@ let timerInterval = null;
 let historyRange = 7;
 let taskFilter = "all";
 let taskQuery = "";
+let recordQuery = "";
+let recordFilter = "all";
 let deferredInstallPrompt = null;
 let toastTimeout = null;
 let toastActionHandler = null;
@@ -632,10 +634,13 @@ function renderInsights() {
 }
 
 function renderRecords() {
-  const sessions = focusSessions().sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
-  $("#recordCount").textContent = `共 ${sessions.length} 条`;
+  const allSessions = focusSessions().sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+  const sessions = filterFocusRecords(allSessions, recordFilter, recordQuery);
+  $("#recordCount").textContent = sessions.length === allSessions.length ? `共 ${allSessions.length} 条` : `${sessions.length} / ${allSessions.length} 条`;
   if (!sessions.length) {
-    $("#recordsList").innerHTML = `<div class="empty-state"><span class="empty-icon"><svg><use href="#i-clock"></use></svg></span><p>还没有专注记录<br><small>完成第一次专注后，记录会出现在这里</small></p></div>`;
+    const message = allSessions.length ? "没有匹配的专注记录" : "还没有专注记录";
+    const hint = allSessions.length ? "换个关键词或筛选条件试试" : "完成第一次专注后，记录会出现在这里";
+    $("#recordsList").innerHTML = `<div class="empty-state"><span class="empty-icon"><svg><use href="#i-clock"></use></svg></span><p>${message}<br><small>${hint}</small></p></div>`;
     return;
   }
   $("#recordsList").innerHTML = sessions.map(session => {
@@ -926,6 +931,8 @@ function bindEvents() {
     const row = event.target.closest(".record-row");
     if (button && row) deleteSession(row.dataset.id);
   });
+  $("#recordSearch").addEventListener("input", event => { recordQuery = event.target.value; renderRecords(); });
+  $("#recordFilter").addEventListener("change", event => { recordFilter = event.target.value; renderRecords(); });
 
   $("#openSettings").addEventListener("click", openSettings);
   $("#closeSettings").addEventListener("click", closeSettings);

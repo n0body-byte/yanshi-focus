@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { analyzeFocusSessions, getTimeBand } = require("../insight-helpers.js");
+const { analyzeFocusSessions, filterFocusRecords, getTimeBand } = require("../insight-helpers.js");
 
 test("专注洞察只统计所选自然日范围内的记录", () => {
   const now = new Date(2026, 7, 9, 20, 0, 0);
@@ -38,4 +38,14 @@ test("无记录时返回稳定的零值洞察", () => {
   assert.equal(result.peakBand, "暂无数据");
   assert.deepEqual(result.topTasks, []);
   assert.equal(getTimeBand(1).label, "深夜 23–04");
+});
+
+test("专注记录可以按任务名称与完成状态组合筛选", () => {
+  const sessions = [
+    { id: "1", type: "focus", taskTitle: "数学真题", completed: true },
+    { id: "2", type: "focus", taskTitle: "数学错题", completed: false },
+    { id: "3", type: "focus", taskTitle: "英语阅读", completed: true }
+  ];
+  assert.deepEqual(filterFocusRecords(sessions, "completed", "数学").map(item => item.id), ["1"]);
+  assert.deepEqual(filterFocusRecords(sessions, "early", "").map(item => item.id), ["2"]);
 });
