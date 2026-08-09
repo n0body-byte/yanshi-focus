@@ -1,7 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { createStorageManager } = require("./storage-manager.cjs");
+const { normalizeDesktopTimerStatus } = require("./desktop-timer-helpers.cjs");
 
 // 固定数据目录，避免应用升级、安装路径变化或使用便携版时丢失历史记录。
 app.setPath("userData", process.env.YANSHI_DATA_DIR || path.join(app.getPath("appData"), "YanShi"));
@@ -14,6 +15,7 @@ const TEST_MODE = process.env.YANSHI_TEST_MODE === "1";
 let mainWindow = null;
 let pendingData = null;
 let saveTimer = null;
+let displaySleepBlockerId = null;
 
 function loadData() {
   return storageManager.loadData();
@@ -47,6 +49,17 @@ function queueDataSave(content) {
 ipcMain.on("storage:load", event => { event.returnValue = loadData(); });
 ipcMain.on("storage:path", event => { event.returnValue = DATA_FILE; });
 ipcMain.on("storage:save", (_event, content) => queueDataSave(content));
+
+ipcMain.on("timer:status", (_event, value) => {
+  const status = normalizeDesktopTimerStatus(value);
+  if (status.shouldBlockDisplaySleep && displaySleepBlockerId === null) {
+    displaySleepBlockerId = powerSaveBlocker.start("prevent-display-sleep");
+  } else if (!status.shouldBlockDisplaySleep && displaySleepBlockerId !== null) {
+    if (powerSaveBlocker.isStarted(displaySleepBlockerId)) powerSaveBlocker.stop(displaySleepBlockerId);
+    displaySleepBlockerId = null;
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setProgressBar(status.taskbarProgress);
+});
 
 ipcMain.handle("storage:info", () => storageManager.getInfo());
 
@@ -131,6 +144,10 @@ if (!hasLock) {
 
   app.whenReady().then(createWindow);
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-  app.on("before-quit", flushData);
+  app.on("before-quit", () => {
+    if (displaySleepBlockerId !== null && powerSaveBlocker.isStarted(displaySleepBlockerId)) powerSaveBlocker.stop(displaySleepBlockerId);
+    displaySleepBlockerId = null;
+    flushData();
+  });
   app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 }

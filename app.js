@@ -6,7 +6,7 @@ const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
 const { analyzeFocusSessions } = window.YanShiInsightHelpers;
 
 const defaultState = {
-  settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, dailyTarget: 6 },
+  settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, keepAwake: true, dailyTarget: 6 },
   todos: [],
   sessions: [],
   timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "" }
@@ -62,7 +62,8 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     long: clampNumber(saved.settings?.long, 1, 90, defaultState.settings.long),
     dailyTarget: clampNumber(saved.settings?.dailyTarget, 1, 16, defaultState.settings.dailyTarget),
     sound: saved.settings?.sound !== false,
-    autoBreak: saved.settings?.autoBreak === true
+    autoBreak: saved.settings?.autoBreak === true,
+    keepAwake: saved.settings?.keepAwake !== false
   };
   const todos = (Array.isArray(saved.todos) ? saved.todos : []).slice(0, 10000).map(todo => ({
     id: typeof todo?.id === "string" ? todo.id : uid("todo"),
@@ -385,6 +386,12 @@ function renderTimer() {
   button.innerHTML = state.timer.running ? `<svg><use href="#i-pause"></use></svg><span>暂停计时</span>` : `<svg><use href="#i-play"></use></svg><span>${isFocus ? (remaining < state.timer.total ? "继续专注" : "开始专注") : "开始休息"}</span>`;
   $("#finishTimer").textContent = isFocus ? "完成本次" : "结束休息";
   $("#focusTask").disabled = state.timer.running || (isFocus && remaining < state.timer.total);
+  window.yanshiStorage?.updateTimerStatus?.({
+    running: state.timer.running,
+    mode: state.timer.mode,
+    keepAwake: state.settings.keepAwake,
+    progress: state.timer.total ? 1 - remaining / state.timer.total : 0
+  });
   $$(".mode-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mode === state.timer.mode));
   document.title = state.timer.running ? `${$("#timerDisplay").textContent} · ${isFocus ? "专注中" : "休息中"} | 研时` : "研时 · 考研专注钟";
 }
@@ -705,6 +712,7 @@ function openSettings() {
   $("#dailyTarget").value = state.settings.dailyTarget;
   $("#soundEnabled").checked = state.settings.sound;
   $("#autoBreak").checked = state.settings.autoBreak;
+  $("#keepAwake").checked = state.settings.keepAwake;
   $("#settingsModal").classList.add("open");
   $("#settingsModal").setAttribute("aria-hidden", "false");
   refreshDataSafetyInfo();
@@ -834,7 +842,8 @@ function saveSettings(event) {
     long: Math.min(90, Math.max(1, Number($("#longDuration").value) || 15)),
     dailyTarget: Math.min(16, Math.max(1, Number($("#dailyTarget").value) || 6)),
     sound: $("#soundEnabled").checked,
-    autoBreak: $("#autoBreak").checked
+    autoBreak: $("#autoBreak").checked,
+    keepAwake: $("#keepAwake").checked
   };
   state.settings = next;
   if (!state.timer.running) {
