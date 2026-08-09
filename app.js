@@ -3,6 +3,7 @@ const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
 const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
+const { analyzeFocusSessions } = window.YanShiInsightHelpers;
 
 const defaultState = {
   settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, dailyTarget: 6 },
@@ -568,6 +569,7 @@ function renderHistory() {
   $("#bestDayDate").textContent = best ? dateFromKey(best[0]).toLocaleDateString("zh-CN", { month: "long", day: "numeric" }) : "还没有记录";
   $("#weekCompare").textContent = weekSeconds ? `本周完成 ${focusSessions().filter(s => new Date(s.startedAt) >= weekStart).length} 次专注` : "本周从此刻开始";
   renderChart();
+  renderInsights();
   renderRecords();
 }
 
@@ -591,6 +593,33 @@ function renderChart() {
       <span class="chart-value">${item.seconds ? formatDuration(item.seconds, true) : "0m"}</span>
       <i class="chart-column" style="height:${height}px"></i>
       <span class="chart-label">${label}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderInsights() {
+  const insight = analyzeFocusSessions(focusSessions(), historyRange, new Date());
+  $("#insightRangeLabel").textContent = `近 ${historyRange} 天`;
+  $("#insightDailyAverage").textContent = formatDuration(insight.dailyAverageSeconds, true);
+  $("#insightActiveDays").textContent = `${insight.activeDays} 天`;
+  $("#insightCompletionRate").textContent = `${insight.completionRate}%`;
+  $("#insightPeakBand").textContent = insight.peakBand;
+  $("#insightTaskCount").textContent = insight.sessionCount ? `${insight.sessionCount} 次 · ${formatDuration(insight.totalSeconds, true)}` : "暂无记录";
+
+  const breakdown = $("#taskBreakdown");
+  if (!insight.topTasks.length) {
+    breakdown.innerHTML = `<div class="task-breakdown-empty">完成一次关联任务的专注后，这里会显示投入分布</div>`;
+    return;
+  }
+
+  const maxSeconds = insight.topTasks[0].durationSeconds;
+  breakdown.innerHTML = insight.topTasks.map(task => {
+    const currentTitle = state.todos.find(todo => todo.id === task.taskId)?.title;
+    const title = currentTitle || task.title || "自由专注";
+    const width = Math.max(7, task.durationSeconds / maxSeconds * 100);
+    return `<div class="task-breakdown-row" title="${escapeHTML(title)} · ${formatDuration(task.durationSeconds)}">
+      <div><strong>${escapeHTML(title)}</strong><span>${task.sessionCount} 次 · ${formatDuration(task.durationSeconds, true)}</span></div>
+      <i><b style="width:${width}%"></b></i>
     </div>`;
   }).join("");
 }
@@ -881,6 +910,7 @@ function bindEvents() {
     historyRange = Number(button.dataset.range);
     $$("[data-range]").forEach(item => item.classList.toggle("active", item === button));
     renderChart();
+    renderInsights();
   }));
   $("#recordsList").addEventListener("click", event => {
     const button = event.target.closest(".record-delete");

@@ -24,6 +24,7 @@
       "styles.css",
       "app.js",
       "task-helpers.js",
+      "insight-helpers.js",
       "electron-main.cjs",
       "preload.cjs",
       "storage-manager.cjs",

@@ -1,5 +1,5 @@
-const CACHE = "yanshi-v3";
-const ASSETS = ["./", "./index.html", "./styles.css", "./task-helpers.js", "./app.js", "./manifest.json", "./assets/icon.svg"];
+const CACHE = "yanshi-v4";
+const ASSETS = ["./", "./index.html", "./styles.css", "./task-helpers.js", "./insight-helpers.js", "./app.js", "./manifest.json", "./assets/icon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -178,6 +178,24 @@
             </div>
             <div class="chart-wrap" id="focusChart"></div>
           </article>
+          <article class="panel insights-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">FOCUS REVIEW</p><h2>专注洞察</h2></div>
+              <span class="insight-range-label" id="insightRangeLabel">近 7 天</span>
+            </div>
+            <div class="insights-layout">
+              <div class="insight-metrics">
+                <div><span>日均专注</span><strong id="insightDailyAverage">0m</strong><small>按所选自然日计算</small></div>
+                <div><span>活跃天数</span><strong id="insightActiveDays">0 天</strong><small>至少完成 1 分钟</small></div>
+                <div><span>完整番茄率</span><strong id="insightCompletionRate">0%</strong><small>完整结束的专注占比</small></div>
+                <div><span>高效时段</span><strong id="insightPeakBand">暂无数据</strong><small>投入时长最多的时段</small></div>
+              </div>
+              <div class="task-breakdown-section">
+                <div class="task-breakdown-head"><strong>任务投入分布</strong><span id="insightTaskCount">暂无记录</span></div>
+                <div class="task-breakdown" id="taskBreakdown"></div>
+              </div>
+            </div>
+          </article>
           <article class="panel records-panel">
             <div class="panel-heading">
               <div><p class="eyebrow">SESSIONS</p><h2>专注明细</h2></div>
@@ -265,6 +283,7 @@
 
     <div class="toast" id="toast" role="status"><svg><use href="#i-check"></use></svg><span></span><button class="hidden" id="toastAction" type="button">撤销</button></div>
     <script src="task-helpers.js"></script>
+    <script src="insight-helpers.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
