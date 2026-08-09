@@ -133,6 +133,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .focus-task-label { display: block; text-align: center; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
 .task-select-wrap { width: 290px; height: 37px; position: relative; margin: 0 auto 13px; }
 .task-select-wrap select { width: 100%; height: 100%; padding: 0 35px 0 39px; border: 1px solid var(--line); border-radius: 11px; color: var(--ink); background: var(--surface-2); appearance: none; outline: none; font-size: 12px; text-overflow: ellipsis; }
+.task-select-wrap select:disabled { color: #929a96; background: #efefe9; cursor: not-allowed; }
 .task-select-wrap > svg { position: absolute; left: 13px; top: 10px; width: 16px; color: var(--sage); pointer-events: none; }
 .timer-actions { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .icon-button { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; border: 1px solid var(--line); color: var(--muted); background: white; cursor: pointer; }
@@ -159,19 +160,26 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .quick-add button svg { width: 17px; }
 .todo-list { min-height: 80px; }
 .todo-list.compact { max-height: 318px; overflow: auto; padding-right: 2px; }
-.todo-item { display: flex; align-items: center; gap: 11px; padding: 11px 3px; border-bottom: 1px solid #eeeee8; animation: item-in .2s ease; }
+.todo-item { display: flex; align-items: center; gap: 9px; padding: 11px 3px; border-bottom: 1px solid #eeeee8; border-radius: 10px; animation: item-in .2s ease; transition: background .18s; }
+.todo-item.pinned { background: rgba(231,238,232,.48); }
+.todo-item.selected { background: var(--mint); }
 @keyframes item-in { from { opacity: 0; transform: translateY(-4px); } }
 .todo-check { flex: 0 0 auto; width: 19px; height: 19px; border: 1.5px solid #b8c2bd; border-radius: 6px; display: grid; place-items: center; color: white; background: white; cursor: pointer; padding: 0; }
 .todo-check svg { width: 13px; opacity: 0; stroke-width: 2.5; }
 .todo-item.done .todo-check { border-color: var(--sage); background: var(--sage); }
 .todo-item.done .todo-check svg { opacity: 1; }
-.todo-text { flex: 1; min-width: 0; line-height: 1.5; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todo-main { flex: 1; min-width: 0; }
+.todo-text { min-width: 0; line-height: 1.5; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo-item.done .todo-text { color: #a1a6a3; text-decoration: line-through; }
-.todo-meta { color: #a0a6a3; font-size: 9px; }
-.todo-delete { width: 26px; height: 26px; border: 0; display: grid; place-items: center; color: #b2b5b3; background: transparent; opacity: 0; cursor: pointer; }
-.todo-item:hover .todo-delete { opacity: 1; }
-.todo-delete:hover { color: var(--tomato); }
-.todo-delete svg { width: 14px; }
+.todo-meta { display: block; margin-top: 2px; color: #949c98; font-size: 9px; }
+.todo-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+.todo-action { width: 27px; height: 27px; border: 0; border-radius: 8px; display: grid; place-items: center; color: #aab0ad; background: transparent; opacity: 0; cursor: pointer; transition: .15s; }
+.todo-action svg { width: 13px; }
+.todo-action.focus, .todo-action.active, .todo-item:hover .todo-action, .todo-action:focus-visible { opacity: 1; }
+.todo-action.focus { color: var(--sage); background: rgba(94,128,115,.08); }
+.todo-action:hover, .todo-action.active { color: var(--forest); background: var(--mint); }
+.todo-action.delete:hover { color: var(--tomato); background: #fbeae6; }
+.todo-edit-input { width: 100%; height: 30px; border: 1px solid #9fb5ab; border-radius: 8px; padding: 0 9px; outline: none; color: var(--ink); background: white; box-shadow: 0 0 0 3px rgba(94,128,115,.09); font-size: 11px; }
 .empty-state { min-height: 160px; display: grid; place-items: center; align-content: center; color: #a1a7a4; text-align: center; }
 .empty-state .empty-icon { width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center; color: var(--sage); background: var(--mint); margin-bottom: 10px; }
 .empty-state p { margin: 0; font-size: 11px; line-height: 1.7; }
@@ -234,10 +242,17 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .task-add-form input { flex: 1; height: 100%; border: 0; outline: 0; background: transparent; }
 .task-add-form button { align-self: stretch; border: 0; padding: 0 25px; color: white; background: var(--forest-2); font-weight: 700; cursor: pointer; }
 .task-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 9px; }
+.task-toolbar-actions { display: flex; align-items: center; gap: 13px; }
+.task-search { width: 170px; height: 34px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.task-search:focus-within { border-color: #a9bcb3; box-shadow: 0 0 0 3px rgba(94,128,115,.08); }
+.task-search svg { flex: 0 0 auto; width: 14px; color: var(--sage); }
+.task-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 10px; }
+.task-search input::-webkit-search-cancel-button { cursor: pointer; }
 .clear-completed { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 10px; }
 .clear-completed:hover { color: var(--tomato); }
 .todo-list.full .todo-item { min-height: 55px; padding: 10px 9px; }
 .todo-list.full .todo-text { font-size: 12px; white-space: normal; }
+.todo-list.full .todo-edit-input { font-size: 12px; }
 
 .modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 30px; background: rgba(12,31,26,.52); backdrop-filter: blur(4px); opacity: 0; visibility: hidden; transition: .2s; z-index: 50; }
 .modal-backdrop.open { opacity: 1; visibility: visible; }

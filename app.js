@@ -2,6 +2,7 @@ const STORAGE_KEY = "yanshi-focus-v1";
 const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
 const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
+const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
 
 const defaultState = {
   settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, dailyTarget: 6 },
@@ -14,6 +15,7 @@ let state = loadState();
 let timerInterval = null;
 let historyRange = 7;
 let taskFilter = "all";
+let taskQuery = "";
 let deferredInstallPrompt = null;
 let toastTimeout = null;
 let toastActionHandler = null;
@@ -65,6 +67,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     id: typeof todo?.id === "string" ? todo.id : uid("todo"),
     title: String(todo?.title || "未命名任务").slice(0, 80),
     completed: todo?.completed === true,
+    pinned: todo?.pinned === true,
     createdAt: safeDate(todo?.createdAt),
     completedAt: todo?.completedAt ? safeDate(todo.completedAt) : null
   }));
@@ -256,6 +259,10 @@ function toggleTimer() {
   renderTimer();
 }
 
+function timerHasFocusProgress() {
+  return state.timer.mode === "focus" && (state.timer.running || getCurrentRemaining() < state.timer.total);
+}
+
 function startTimerLoop() {
   stopTimerLoop();
   timerInterval = setInterval(() => {
@@ -376,6 +383,7 @@ function renderTimer() {
   button.classList.toggle("running", state.timer.running);
   button.innerHTML = state.timer.running ? `<svg><use href="#i-pause"></use></svg><span>暂停计时</span>` : `<svg><use href="#i-play"></use></svg><span>${isFocus ? (remaining < state.timer.total ? "继续专注" : "开始专注") : "开始休息"}</span>`;
   $("#finishTimer").textContent = isFocus ? "完成本次" : "结束休息";
+  $("#focusTask").disabled = state.timer.running || (isFocus && remaining < state.timer.total);
   $$(".mode-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mode === state.timer.mode));
   document.title = state.timer.running ? `${$("#timerDisplay").textContent} · ${isFocus ? "专注中" : "休息中"} | 研时` : "研时 · 考研专注钟";
 }
@@ -383,7 +391,7 @@ function renderTimer() {
 function addTodo(title) {
   const cleanTitle = title.trim();
   if (!cleanTitle) return;
-  state.todos.unshift({ id: uid("todo"), title: cleanTitle, completed: false, createdAt: new Date().toISOString(), completedAt: null });
+  state.todos.unshift({ id: uid("todo"), title: cleanTitle, completed: false, pinned: false, createdAt: new Date().toISOString(), completedAt: null });
   saveState();
   renderTodos();
   renderSummary();
@@ -393,16 +401,90 @@ function addTodo(title) {
 function toggleTodo(id) {
   const todo = state.todos.find(item => item.id === id);
   if (!todo) return;
+  if (!todo.completed && state.timer.taskId === id && timerHasFocusProgress()) {
+    showToast("请先完成或重置当前番茄，再勾选这项任务");
+    return;
+  }
   todo.completed = !todo.completed;
   todo.completedAt = todo.completed ? new Date().toISOString() : null;
+  if (todo.completed && state.timer.taskId === id) state.timer.taskId = "";
   saveState();
   renderTodos();
   renderSummary();
 }
 
+function toggleTodoPin(id) {
+  const todo = state.todos.find(item => item.id === id);
+  if (!todo || todo.completed) return;
+  todo.pinned = !todo.pinned;
+  saveState();
+  renderTodos();
+  showToast(todo.pinned ? "任务已置顶" : "已取消置顶");
+}
+
+function focusTodo(id) {
+  const todo = state.todos.find(item => item.id === id && !item.completed);
+  if (!todo) return;
+  if (state.timer.running && state.timer.taskId !== id) {
+    showToast("请先暂停当前计时，再切换任务");
+    return;
+  }
+  if (timerHasFocusProgress() && state.timer.taskId !== id) {
+    showToast("当前番茄已有进度，重置后才能切换任务");
+    return;
+  }
+  if (state.timer.mode !== "focus") setMode("focus", true);
+  state.timer.taskId = id;
+  saveState();
+  renderTodos();
+  renderTimer();
+  navigate("timer");
+  showToast(`已选择“${todo.title}”`);
+}
+
+function beginTodoEdit(id, item) {
+  const todo = state.todos.find(candidate => candidate.id === id);
+  const text = item?.querySelector(".todo-text");
+  if (!todo || !text) return;
+
+  const input = document.createElement("input");
+  input.className = "todo-edit-input";
+  input.setAttribute("aria-label", "编辑任务名称");
+  input.maxLength = 80;
+  input.value = todo.title;
+  text.replaceWith(input);
+  input.focus();
+  input.select();
+
+  let finished = false;
+  const finish = (shouldSave) => {
+    if (finished) return;
+    finished = true;
+    const nextTitle = input.value.trim();
+    if (shouldSave && nextTitle) {
+      todo.title = nextTitle;
+      saveState();
+      showToast("任务名称已更新");
+    } else if (shouldSave && !nextTitle) {
+      showToast("任务名称不能为空");
+    }
+    renderTodos();
+  };
+
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter") { event.preventDefault(); finish(true); }
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finish(false); }
+  });
+  input.addEventListener("blur", () => finish(true), { once: true });
+}
+
 function deleteTodo(id) {
   const index = state.todos.findIndex(item => item.id === id);
   if (index < 0) return;
+  if (state.timer.taskId === id && timerHasFocusProgress()) {
+    showToast("当前番茄正在使用这项任务，完成或重置后才能删除");
+    return;
+  }
   const [removed] = state.todos.splice(index, 1);
   const wasSelected = state.timer.taskId === id;
   if (wasSelected) state.timer.taskId = "";
@@ -420,12 +502,24 @@ function deleteTodo(id) {
 
 function todoHTML(todo, full = false) {
   const created = new Date(todo.createdAt);
-  const meta = full ? `${created.getMonth() + 1} 月 ${created.getDate()} 日添加` : "";
-  return `<div class="todo-item ${todo.completed ? "done" : ""}" data-id="${todo.id}">
+  const stats = getTaskStats(todo.id, state.sessions);
+  const activity = stats.sessionCount
+    ? `已专注 ${formatDuration(stats.durationSeconds, true)} · ${stats.sessionCount} 次`
+    : `${created.getMonth() + 1} 月 ${created.getDate()} 日添加`;
+  const meta = `${todo.pinned && !todo.completed ? "置顶 · " : ""}${activity}`;
+  const classes = [todo.completed ? "done" : "", todo.pinned && !todo.completed ? "pinned" : "", state.timer.taskId === todo.id ? "selected" : ""].filter(Boolean).join(" ");
+  return `<div class="todo-item ${classes}" data-id="${escapeHTML(todo.id)}">
     <button class="todo-check" data-action="toggle" aria-label="${todo.completed ? "标记为未完成" : "标记为完成"}"><svg><use href="#i-check"></use></svg></button>
-    <div class="todo-text" title="${escapeHTML(todo.title)}">${escapeHTML(todo.title)}</div>
-    ${full ? `<span class="todo-meta">${meta}</span>` : ""}
-    <button class="todo-delete" data-action="delete" aria-label="删除任务"><svg><use href="#i-trash"></use></svg></button>
+    <div class="todo-main">
+      <div class="todo-text" title="${escapeHTML(todo.title)}">${escapeHTML(todo.title)}</div>
+      ${full ? `<span class="todo-meta">${meta}</span>` : ""}
+    </div>
+    <div class="todo-actions">
+      ${!todo.completed ? `<button class="todo-action ${todo.pinned ? "active" : ""}" data-action="pin" aria-label="${todo.pinned ? "取消置顶" : "置顶任务"}" title="${todo.pinned ? "取消置顶" : "置顶任务"}"><svg><use href="#i-pin"></use></svg></button>` : ""}
+      ${!todo.completed ? `<button class="todo-action focus" data-action="focus" aria-label="专注此任务" title="选择并前往计时"><svg><use href="#i-play"></use></svg></button>` : ""}
+      ${full ? `<button class="todo-action" data-action="edit" aria-label="编辑任务" title="编辑任务"><svg><use href="#i-edit"></use></svg></button>` : ""}
+      <button class="todo-action delete" data-action="delete" aria-label="删除任务" title="删除任务"><svg><use href="#i-trash"></use></svg></button>
+    </div>
   </div>`;
 }
 
@@ -434,12 +528,13 @@ function emptyTodoHTML(message = "还没有任务") {
 }
 
 function renderTodos() {
-  const sorted = [...state.todos].sort((a, b) => Number(a.completed) - Number(b.completed) || new Date(b.createdAt) - new Date(a.createdAt));
-  const quickItems = sorted.slice(0, 6);
+  const sorted = sortTasks(state.todos);
+  const quickItems = sorted.filter(todo => !todo.completed).slice(0, 6);
   $("#quickTodoList").innerHTML = quickItems.length ? quickItems.map(todo => todoHTML(todo)).join("") : emptyTodoHTML("今天还没有待办");
 
-  const filtered = sorted.filter(todo => taskFilter === "all" || (taskFilter === "open" ? !todo.completed : todo.completed));
-  $("#fullTodoList").innerHTML = filtered.length ? filtered.map(todo => todoHTML(todo, true)).join("") : emptyTodoHTML(taskFilter === "done" ? "还没有完成的任务" : "任务清单是空的");
+  const filtered = filterTasks(sorted, taskFilter, taskQuery);
+  const emptyMessage = taskQuery ? `没有找到“${escapeHTML(taskQuery)}”` : (taskFilter === "done" ? "还没有完成的任务" : "任务清单是空的");
+  $("#fullTodoList").innerHTML = filtered.length ? filtered.map(todo => todoHTML(todo, true)).join("") : emptyTodoHTML(emptyMessage);
 
   const done = state.todos.filter(todo => todo.completed).length;
   const percentage = state.todos.length ? Math.round(done / state.todos.length * 100) : 0;
@@ -449,7 +544,7 @@ function renderTodos() {
 
   const select = $("#focusTask");
   const selected = state.timer.taskId;
-  select.innerHTML = `<option value="">暂不关联任务</option>${state.todos.filter(todo => !todo.completed).map(todo => `<option value="${todo.id}">${escapeHTML(todo.title)}</option>`).join("")}`;
+  select.innerHTML = `<option value="">暂不关联任务</option>${state.todos.filter(todo => !todo.completed).map(todo => `<option value="${escapeHTML(todo.id)}">${escapeHTML(todo.title)}</option>`).join("")}`;
   select.value = state.todos.some(todo => todo.id === selected && !todo.completed) ? selected : "";
   state.timer.taskId = select.value;
 }
@@ -741,12 +836,20 @@ function bindEvents() {
     event.preventDefault();
     addTodo($("#taskAddInput").value);
     $("#taskAddInput").value = "";
+    taskQuery = "";
+    $("#taskSearch").value = "";
+    taskFilter = "all";
+    $$('[data-task-filter]').forEach(item => item.classList.toggle("active", item.dataset.taskFilter === "all"));
+    renderTodos();
   });
   [$("#quickTodoList"), $("#fullTodoList")].forEach(list => list.addEventListener("click", event => {
     const button = event.target.closest("button[data-action]");
     const item = event.target.closest(".todo-item");
     if (!button || !item) return;
     if (button.dataset.action === "toggle") toggleTodo(item.dataset.id);
+    if (button.dataset.action === "pin") toggleTodoPin(item.dataset.id);
+    if (button.dataset.action === "focus") focusTodo(item.dataset.id);
+    if (button.dataset.action === "edit") beginTodoEdit(item.dataset.id, item);
     if (button.dataset.action === "delete") deleteTodo(item.dataset.id);
   }));
   $$("[data-task-filter]").forEach(button => button.addEventListener("click", () => {
@@ -754,6 +857,10 @@ function bindEvents() {
     $$("[data-task-filter]").forEach(item => item.classList.toggle("active", item === button));
     renderTodos();
   }));
+  $("#taskSearch").addEventListener("input", event => {
+    taskQuery = event.target.value;
+    renderTodos();
+  });
   $("#clearCompleted").addEventListener("click", () => {
     const count = state.todos.filter(todo => todo.completed).length;
     if (!count) return showToast("没有已完成的任务");
@@ -810,6 +917,16 @@ function bindEvents() {
     const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
     if (event.code === "Escape") closeSettings();
     if (typing || $("#settingsModal").classList.contains("open")) return;
+    if (event.key === "/" && $("#view-tasks").classList.contains("active")) {
+      event.preventDefault();
+      $("#taskSearch").focus();
+      return;
+    }
+    if (event.key.toLowerCase() === "n" && $("#view-tasks").classList.contains("active")) {
+      event.preventDefault();
+      $("#taskAddInput").focus();
+      return;
+    }
     if (event.code === "Space") { event.preventDefault(); toggleTimer(); }
     if (event.key.toLowerCase() === "r") resetTimer();
   });

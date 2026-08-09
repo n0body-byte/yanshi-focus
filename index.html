@@ -31,6 +31,9 @@
       <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
       <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5h7l2-2h9v13H3v-11Z"/></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.2 3 7.8 7.5 9.5 4.5-1.7 7.5-5.3 7.5-9.5V6L12 3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l11-11-4-4L4 16v4ZM13.5 6.5l4 4"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="m14 4 6 6-3 1-4 4-1 4-3-3-5 5-1-1 5-5-3-3 4-1 4-4 1-3Z"/></symbol>
     </svg>
 
     <div class="app-shell">
@@ -205,7 +208,13 @@
                 <button data-task-filter="open">待完成</button>
                 <button data-task-filter="done">已完成</button>
               </div>
-              <button class="clear-completed" id="clearCompleted">清除已完成</button>
+              <div class="task-toolbar-actions">
+                <label class="task-search" for="taskSearch">
+                  <svg><use href="#i-search"></use></svg>
+                  <input id="taskSearch" type="search" maxlength="80" placeholder="搜索任务" aria-label="搜索任务" autocomplete="off" />
+                </label>
+                <button class="clear-completed" id="clearCompleted">清除已完成</button>
+              </div>
             </div>
             <div class="todo-list full" id="fullTodoList"></div>
           </article>
@@ -255,6 +264,7 @@
     </div>
 
     <div class="toast" id="toast" role="status"><svg><use href="#i-check"></use></svg><span></span><button class="hidden" id="toastAction" type="button">撤销</button></div>
+    <script src="task-helpers.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
