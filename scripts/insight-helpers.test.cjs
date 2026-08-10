@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { analyzeFocusSessions, filterFocusRecords, getTimeBand } = require("../insight-helpers.js");
+const { analyzeFocusSessions, calculateGoalProgress, filterFocusRecords, getTimeBand } = require("../insight-helpers.js");
 
 test("专注洞察只统计所选自然日范围内的记录", () => {
   const now = new Date(2026, 7, 9, 20, 0, 0);
@@ -48,4 +48,9 @@ test("专注记录可以按任务名称与完成状态组合筛选", () => {
   ];
   assert.deepEqual(filterFocusRecords(sessions, "completed", "数学").map(item => item.id), ["1"]);
   assert.deepEqual(filterFocusRecords(sessions, "early", "").map(item => item.id), ["2"]);
+});
+
+test("周目标进度会计算剩余时长并限制在百分之百", () => {
+  assert.deepEqual(calculateGoalProgress(18 * 3600, 30), { percentage: 60, remainingSeconds: 12 * 3600, reached: false });
+  assert.deepEqual(calculateGoalProgress(35 * 3600, 30), { percentage: 100, remainingSeconds: 0, reached: true });
 });

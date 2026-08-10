@@ -82,5 +82,15 @@
     });
   }
 
-  return { analyzeFocusSessions, filterFocusRecords, getTimeBand };
+  function calculateGoalProgress(seconds, targetHours) {
+    const totalSeconds = Math.max(0, Number(seconds) || 0);
+    const targetSeconds = Math.max(1, Number(targetHours) || 1) * 3600;
+    return {
+      percentage: Math.min(100, Math.round(totalSeconds / targetSeconds * 100)),
+      remainingSeconds: Math.max(0, targetSeconds - totalSeconds),
+      reached: totalSeconds >= targetSeconds
+    };
+  }
+
+  return { analyzeFocusSessions, calculateGoalProgress, filterFocusRecords, getTimeBand };
 });

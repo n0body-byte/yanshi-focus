@@ -164,7 +164,7 @@
 
         <section class="view" id="view-history">
           <div class="history-summary">
-            <article><span>本周专注</span><strong id="weekFocus">0h 0m</strong><small id="weekCompare">本周从此刻开始</small></article>
+            <article><span>本周专注</span><strong id="weekFocus">0h 0m</strong><small id="weekCompare">本周从此刻开始</small><div class="week-target-track"><i id="weekTargetProgress"></i></div></article>
             <article><span>累计专注</span><strong id="totalFocus">0h 0m</strong><small id="totalDays">0 个专注日</small></article>
             <article><span>最佳单日</span><strong id="bestDay">0h 0m</strong><small id="bestDayDate">还没有记录</small></article>
           </div>
@@ -269,6 +269,9 @@
           </div>
           <div class="settings-section target-setting">
             <label><span><strong>每日专注目标</strong><small>用于首页显示今日进度</small></span><div><input id="dailyTarget" type="number" min="1" max="16" /><b>小时</b></div></label>
+          </div>
+          <div class="settings-section target-setting">
+            <label><span><strong>每周专注目标</strong><small>用于专注记录页显示本周进度</small></span><div><input id="weeklyTarget" type="number" min="1" max="100" /><b>小时</b></div></label>
           </div>
           <div class="settings-section data-safety-section">
             <div class="settings-section-title">

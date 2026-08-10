@@ -3,12 +3,12 @@ const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
 const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
-const { analyzeFocusSessions, filterFocusRecords } = window.YanShiInsightHelpers;
+const { analyzeFocusSessions, calculateGoalProgress, filterFocusRecords } = window.YanShiInsightHelpers;
 const { getNextTimerMode } = window.YanShiTimerHelpers;
 const { buildSessionCsv } = window.YanShiExportHelpers;
 
 const defaultState = {
-  settings: { focus: 25, short: 5, long: 15, sound: true, notifications: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, longBreakInterval: 4 },
+  settings: { focus: 25, short: 5, long: 15, sound: true, notifications: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, weeklyTarget: 30, longBreakInterval: 4 },
   todos: [],
   sessions: [],
   timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "" }
@@ -65,6 +65,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     short: clampNumber(saved.settings?.short, 1, 60, defaultState.settings.short),
     long: clampNumber(saved.settings?.long, 1, 90, defaultState.settings.long),
     dailyTarget: clampNumber(saved.settings?.dailyTarget, 1, 16, defaultState.settings.dailyTarget),
+    weeklyTarget: clampNumber(saved.settings?.weeklyTarget, 1, 100, defaultState.settings.weeklyTarget),
     sound: saved.settings?.sound !== false,
     notifications: saved.settings?.notifications !== false,
     autoBreak: saved.settings?.autoBreak === true,
@@ -571,6 +572,7 @@ function renderHistory() {
   const weekStart = startOfWeek(now);
   const weekSeconds = focusSessions().filter(session => new Date(session.startedAt) >= weekStart).reduce((sum, session) => sum + session.durationSeconds, 0);
   const allSeconds = focusSessions().reduce((sum, session) => sum + session.durationSeconds, 0);
+  const weekGoal = calculateGoalProgress(weekSeconds, state.settings.weeklyTarget);
   const byDay = new Map();
   focusSessions().forEach(session => {
     const key = localDateKey(new Date(session.startedAt));
@@ -583,7 +585,8 @@ function renderHistory() {
   $("#totalDays").textContent = `${byDay.size} 个专注日`;
   $("#bestDay").textContent = best ? formatDuration(best[1], true) : "0h 0m";
   $("#bestDayDate").textContent = best ? dateFromKey(best[0]).toLocaleDateString("zh-CN", { month: "long", day: "numeric" }) : "还没有记录";
-  $("#weekCompare").textContent = weekSeconds ? `本周完成 ${focusSessions().filter(s => new Date(s.startedAt) >= weekStart).length} 次专注` : "本周从此刻开始";
+  $("#weekCompare").textContent = weekGoal.reached ? `已达成本周 ${state.settings.weeklyTarget}h 目标` : `目标 ${state.settings.weeklyTarget}h · 已完成 ${weekGoal.percentage}%`;
+  $("#weekTargetProgress").style.width = `${weekGoal.percentage}%`;
   renderChart();
   renderInsights();
   renderRecords();
@@ -745,6 +748,7 @@ function openSettings() {
   $("#shortDuration").value = state.settings.short;
   $("#longDuration").value = state.settings.long;
   $("#dailyTarget").value = state.settings.dailyTarget;
+  $("#weeklyTarget").value = state.settings.weeklyTarget;
   $("#soundEnabled").checked = state.settings.sound;
   $("#notificationEnabled").checked = state.settings.notifications;
   $("#autoBreak").checked = state.settings.autoBreak;
@@ -879,6 +883,7 @@ async function saveSettings(event) {
     short: Math.min(60, Math.max(1, Number($("#shortDuration").value) || 5)),
     long: Math.min(90, Math.max(1, Number($("#longDuration").value) || 15)),
     dailyTarget: Math.min(16, Math.max(1, Number($("#dailyTarget").value) || 6)),
+    weeklyTarget: Math.min(100, Math.max(1, Number($("#weeklyTarget").value) || 30)),
     sound: $("#soundEnabled").checked,
     notifications: $("#notificationEnabled").checked,
     autoBreak: $("#autoBreak").checked,
