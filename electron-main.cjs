@@ -61,6 +61,10 @@ ipcMain.on("timer:status", (_event, value) => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setProgressBar(status.taskbarProgress);
 });
 
+ipcMain.on("timer:completed", () => {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) mainWindow.flashFrame(true);
+});
+
 ipcMain.handle("storage:info", () => storageManager.getInfo());
 
 ipcMain.handle("storage:export", async (_event, content) => {
@@ -143,6 +147,7 @@ function createWindow() {
     mainWindow.webContents.once("did-finish-load", () => setTimeout(() => app.quit(), 800));
   }
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mainWindow.on("focus", () => mainWindow?.flashFrame(false));
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 

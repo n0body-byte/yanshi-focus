@@ -8,7 +8,7 @@ const { getNextTimerMode } = window.YanShiTimerHelpers;
 const { buildSessionCsv } = window.YanShiExportHelpers;
 
 const defaultState = {
-  settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, longBreakInterval: 4 },
+  settings: { focus: 25, short: 5, long: 15, sound: true, notifications: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, longBreakInterval: 4 },
   todos: [],
   sessions: [],
   timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "" }
@@ -66,6 +66,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     long: clampNumber(saved.settings?.long, 1, 90, defaultState.settings.long),
     dailyTarget: clampNumber(saved.settings?.dailyTarget, 1, 16, defaultState.settings.dailyTarget),
     sound: saved.settings?.sound !== false,
+    notifications: saved.settings?.notifications !== false,
     autoBreak: saved.settings?.autoBreak === true,
     autoFocus: saved.settings?.autoFocus === true,
     keepAwake: saved.settings?.keepAwake !== false,
@@ -336,7 +337,8 @@ function completeTimer(natural) {
   }
 
   playCompletionSound();
-  if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+  if (state.settings.notifications) window.yanshiStorage?.notifyCompletion?.();
+  if (state.settings.notifications && document.hidden && "Notification" in window && Notification.permission === "granted") {
     new Notification(finishedMode === "focus" ? "专注完成" : "休息结束", { body: finishedMode === "focus" ? "这段努力已经记录，休息一下吧。" : "准备开始下一轮专注。", icon: "assets/icon.svg" });
   }
 
@@ -744,6 +746,7 @@ function openSettings() {
   $("#longDuration").value = state.settings.long;
   $("#dailyTarget").value = state.settings.dailyTarget;
   $("#soundEnabled").checked = state.settings.sound;
+  $("#notificationEnabled").checked = state.settings.notifications;
   $("#autoBreak").checked = state.settings.autoBreak;
   $("#autoFocus").checked = state.settings.autoFocus;
   $("#keepAwake").checked = state.settings.keepAwake;
@@ -869,7 +872,7 @@ async function handleOpenDataFolder() {
   }
 }
 
-function saveSettings(event) {
+async function saveSettings(event) {
   event.preventDefault();
   const next = {
     focus: Math.min(120, Math.max(1, Number($("#focusDuration").value) || 25)),
@@ -877,11 +880,16 @@ function saveSettings(event) {
     long: Math.min(90, Math.max(1, Number($("#longDuration").value) || 15)),
     dailyTarget: Math.min(16, Math.max(1, Number($("#dailyTarget").value) || 6)),
     sound: $("#soundEnabled").checked,
+    notifications: $("#notificationEnabled").checked,
     autoBreak: $("#autoBreak").checked,
     autoFocus: $("#autoFocus").checked,
     keepAwake: $("#keepAwake").checked,
     longBreakInterval: Math.floor(Math.min(8, Math.max(2, Number($("#longBreakInterval").value) || 4)))
   };
+  if (next.notifications && "Notification" in window && Notification.permission === "default") {
+    next.notifications = await Notification.requestPermission() === "granted";
+    $("#notificationEnabled").checked = next.notifications;
+  }
   state.settings = next;
   if (!state.timer.running) {
     state.timer.total = getModeDuration(state.timer.mode);

@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld("yanshiStorage", {
   importData: () => ipcRenderer.invoke("storage:import"),
   backupNow: content => ipcRenderer.invoke("storage:backup-now", content),
   openFolder: () => ipcRenderer.invoke("storage:open-folder"),
-  updateTimerStatus: status => ipcRenderer.send("timer:status", status)
+  updateTimerStatus: status => ipcRenderer.send("timer:status", status),
+  notifyCompletion: () => ipcRenderer.send("timer:completed")
 });
