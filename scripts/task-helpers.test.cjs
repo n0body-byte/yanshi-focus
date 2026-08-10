@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeDueDate, getTaskDueInfo, sortTasks, filterTasks, getTaskStats } = require("../task-helpers.js");
+const { normalizeDueDate, getTaskDueInfo, normalizePomodoroEstimate, sortTasks, filterTasks, getTaskStats, getTaskPomodoroProgress } = require("../task-helpers.js");
 
 const tasks = [
   { id: "done", title: "完成的英语", completed: true, pinned: true, createdAt: "2026-08-03T08:00:00.000Z" },
@@ -25,7 +25,7 @@ test("任务投入统计只累计关联的专注记录", () => {
     { type: "focus", taskId: "normal", durationSeconds: 900 },
     { type: "break", taskId: "pinned", durationSeconds: 300 }
   ];
-  assert.deepEqual(getTaskStats("pinned", sessions), { sessionCount: 2, durationSeconds: 2100 });
+  assert.deepEqual(getTaskStats("pinned", sessions), { sessionCount: 2, completedSessionCount: 0, durationSeconds: 2100 });
 });
 
 test("截止日期会区分逾期、今天、明天和未来", () => {
@@ -47,4 +47,17 @@ test("逾期任务最优先，并可筛出今天需要处理的任务", () => {
   ];
   assert.deepEqual(sortTasks(datedTasks, today).map(task => task.id), ["overdue", "future", "today", "done"]);
   assert.deepEqual(filterTasks(datedTasks, "today", "", today).map(task => task.id), ["overdue", "today"]);
+});
+
+test("预计番茄数会限制范围并按完整专注计算进度", () => {
+  const task = { id: "math", estimatedPomodoros: 3 };
+  const sessions = [
+    { type: "focus", taskId: "math", completed: true, durationSeconds: 1500 },
+    { type: "focus", taskId: "math", completed: true, durationSeconds: 1500 },
+    { type: "focus", taskId: "math", completed: false, durationSeconds: 600 },
+    { type: "focus", taskId: "english", completed: true, durationSeconds: 1500 }
+  ];
+  assert.deepEqual(getTaskPomodoroProgress(task, sessions), { estimated: 3, completed: 2, remaining: 1, percentage: 67 });
+  assert.equal(normalizePomodoroEstimate(120), 99);
+  assert.equal(normalizePomodoroEstimate(""), 0);
 });

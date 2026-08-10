@@ -180,6 +180,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .todo-due.today, .todo-due.tomorrow { color: #9b5e22; background: #fff1d9; }
 .todo-due.overdue { color: #b54831; background: #fbe8e3; }
 .todo-due.done { color: #8e9692; background: #eeeeea; font-weight: 500; }
+.todo-estimate { display: inline-flex; align-items: center; gap: 5px; color: #78837e; }
+.todo-estimate > i { width: 34px; height: 4px; border-radius: 99px; background: #e2e6e2; overflow: hidden; }
+.todo-estimate > i > u { display: block; height: 100%; border-radius: inherit; background: var(--sage); text-decoration: none; }
+.todo-estimate > em { font-style: normal; white-space: nowrap; }
 .todo-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
 .todo-actions[hidden] { display: none; }
 .todo-action { width: 27px; height: 27px; border: 0; border-radius: 8px; display: grid; place-items: center; color: #aab0ad; background: transparent; opacity: 0; cursor: pointer; transition: .15s; }
@@ -192,6 +196,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .todo-edit-fields { display: flex; align-items: center; gap: 7px; }
 .todo-edit-fields .todo-edit-input { flex: 1; width: auto; min-width: 120px; box-shadow: none; }
 .todo-edit-date { width: 126px; height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 7px; outline: none; color: var(--ink); background: white; font-size: 10px; }
+.todo-edit-estimate { width: 58px; height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; outline: none; color: var(--ink); background: white; font-size: 10px; }
 .todo-edit-fields button { height: 30px; border: 0; border-radius: 8px; padding: 0 10px; color: white; background: var(--forest-2); cursor: pointer; font-size: 9px; font-weight: 700; }
 .todo-edit-fields button.cancel { color: var(--muted); background: #eeeee9; }
 .empty-state { min-height: 160px; display: grid; place-items: center; align-content: center; color: #a1a7a4; text-align: center; }
@@ -295,6 +300,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .task-add-form input { flex: 1; height: 100%; border: 0; outline: 0; background: transparent; }
 .task-due-field { flex: 0 0 auto; height: 32px; display: flex; align-items: center; gap: 5px; padding: 0 9px; border-left: 1px solid var(--line); color: var(--muted); font-size: 9px; }
 .task-due-field input { flex: 0 0 auto; width: 116px; padding: 0; color: var(--ink); font-size: 10px; }
+.task-estimate-field { flex: 0 0 auto; height: 32px; display: flex; align-items: center; gap: 5px; padding: 0 9px; border-left: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+.task-estimate-field input { flex: 0 0 auto; width: 45px; padding: 0; color: var(--ink); font-size: 10px; }
 .task-add-form button { align-self: stretch; border: 0; padding: 0 25px; color: white; background: var(--forest-2); font-weight: 700; cursor: pointer; }
 .task-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 9px; }
 .task-toolbar-actions { display: flex; align-items: center; gap: 13px; }

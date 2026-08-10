@@ -2,7 +2,7 @@ const STORAGE_KEY = "yanshi-focus-v1";
 const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
 const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
-const { normalizeDueDate, getTaskDueInfo, sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
+const { normalizeDueDate, getTaskDueInfo, normalizePomodoroEstimate, sortTasks, filterTasks, getTaskStats, getTaskPomodoroProgress } = window.YanShiTaskHelpers;
 const { analyzeFocusSessions, calculateGoalProgress, filterFocusRecords } = window.YanShiInsightHelpers;
 const { getNextTimerMode, getRemainingSeconds } = window.YanShiTimerHelpers;
 const { buildSessionCsv } = window.YanShiExportHelpers;
@@ -81,6 +81,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     completed: todo?.completed === true,
     pinned: todo?.pinned === true,
     dueDate: normalizeDueDate(todo?.dueDate),
+    estimatedPomodoros: normalizePomodoroEstimate(todo?.estimatedPomodoros),
     createdAt: safeDate(todo?.createdAt),
     completedAt: todo?.completedAt ? safeDate(todo.completedAt) : null
   }));
@@ -419,10 +420,14 @@ function renderTimer() {
   document.title = state.timer.running ? `${$("#timerDisplay").textContent} · ${isFocus ? "专注中" : "休息中"} | 研时` : "研时 · 考研专注钟";
 }
 
-function addTodo(title, dueDate = "") {
+function addTodo(title, dueDate = "", estimatedPomodoros = 0) {
   const cleanTitle = title.trim();
   if (!cleanTitle) return;
-  state.todos.unshift({ id: uid("todo"), title: cleanTitle, completed: false, pinned: false, dueDate: normalizeDueDate(dueDate), createdAt: new Date().toISOString(), completedAt: null });
+  state.todos.unshift({
+    id: uid("todo"), title: cleanTitle, completed: false, pinned: false,
+    dueDate: normalizeDueDate(dueDate), estimatedPomodoros: normalizePomodoroEstimate(estimatedPomodoros),
+    createdAt: new Date().toISOString(), completedAt: null
+  });
   saveState();
   renderTodos();
   renderSummary();
@@ -491,6 +496,14 @@ function beginTodoEdit(id, item) {
   dueInput.type = "date";
   dueInput.setAttribute("aria-label", "编辑截止日期");
   dueInput.value = todo.dueDate || "";
+  const estimateInput = document.createElement("input");
+  estimateInput.className = "todo-edit-estimate";
+  estimateInput.type = "number";
+  estimateInput.min = "1";
+  estimateInput.max = "99";
+  estimateInput.placeholder = "番茄";
+  estimateInput.setAttribute("aria-label", "编辑预计番茄数");
+  estimateInput.value = todo.estimatedPomodoros || "";
   const saveButton = document.createElement("button");
   saveButton.type = "submit";
   saveButton.textContent = "保存";
@@ -498,7 +511,7 @@ function beginTodoEdit(id, item) {
   cancelButton.type = "button";
   cancelButton.className = "cancel";
   cancelButton.textContent = "取消";
-  editor.append(titleInput, dueInput, saveButton, cancelButton);
+  editor.append(titleInput, dueInput, estimateInput, saveButton, cancelButton);
   main.replaceChildren(editor);
   if (actions) actions.hidden = true;
   titleInput.focus();
@@ -512,6 +525,7 @@ function beginTodoEdit(id, item) {
     if (shouldSave && nextTitle) {
       todo.title = nextTitle;
       todo.dueDate = normalizeDueDate(dueInput.value);
+      todo.estimatedPomodoros = normalizePomodoroEstimate(estimateInput.value);
       saveState();
       showToast("任务已更新");
     } else if (shouldSave && !nextTitle) {
@@ -553,17 +567,21 @@ function todoHTML(todo, full = false) {
   const created = new Date(todo.createdAt);
   const stats = getTaskStats(todo.id, state.sessions);
   const dueInfo = getTaskDueInfo(todo);
+  const pomodoroProgress = getTaskPomodoroProgress(todo, state.sessions);
   const activity = stats.sessionCount
     ? `已专注 ${formatDuration(stats.durationSeconds, true)} · ${stats.sessionCount} 次`
     : `${created.getMonth() + 1} 月 ${created.getDate()} 日添加`;
   const meta = `${todo.pinned && !todo.completed ? "置顶 · " : ""}${activity}`;
   const dueBadge = dueInfo.label ? `<b class="todo-due ${dueInfo.kind}">${dueInfo.label}</b>` : "";
+  const estimate = pomodoroProgress.estimated
+    ? `<span class="todo-estimate"><i><u style="width:${pomodoroProgress.percentage}%"></u></i><em>${pomodoroProgress.completed} / ${pomodoroProgress.estimated} 番茄</em></span>`
+    : "";
   const classes = [todo.completed ? "done" : "", todo.pinned && !todo.completed ? "pinned" : "", dueInfo.kind, state.timer.taskId === todo.id ? "selected" : ""].filter(Boolean).join(" ");
   return `<div class="todo-item ${classes}" data-id="${escapeHTML(todo.id)}">
     <button class="todo-check" data-action="toggle" aria-label="${todo.completed ? "标记为未完成" : "标记为完成"}"><svg><use href="#i-check"></use></svg></button>
     <div class="todo-main">
       <div class="todo-text" title="${escapeHTML(todo.title)}">${escapeHTML(todo.title)}</div>
-      ${full || dueBadge ? `<span class="todo-meta">${dueBadge}${full ? `<span>${meta}</span>` : ""}</span>` : ""}
+      ${full || dueBadge ? `<span class="todo-meta">${dueBadge}${full ? `<span>${meta}</span>${estimate}` : ""}</span>` : ""}
     </div>
     <div class="todo-actions">
       ${!todo.completed ? `<button class="todo-action ${todo.pinned ? "active" : ""}" data-action="pin" aria-label="${todo.pinned ? "取消置顶" : "置顶任务"}" title="${todo.pinned ? "取消置顶" : "置顶任务"}"><svg><use href="#i-pin"></use></svg></button>` : ""}
@@ -1043,9 +1061,10 @@ function bindEvents() {
   });
   $("#taskAddForm").addEventListener("submit", event => {
     event.preventDefault();
-    addTodo($("#taskAddInput").value, $("#taskDueDate").value);
+    addTodo($("#taskAddInput").value, $("#taskDueDate").value, $("#taskEstimate").value);
     $("#taskAddInput").value = "";
     $("#taskDueDate").value = "";
+    $("#taskEstimate").value = "";
     taskQuery = "";
     $("#taskSearch").value = "";
     taskFilter = "all";

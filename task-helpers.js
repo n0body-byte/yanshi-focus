@@ -41,6 +41,11 @@
     return { kind: "upcoming", label: `${month}月${day}日截止`, days, dueDate };
   }
 
+  function normalizePomodoroEstimate(value) {
+    const estimate = Number(value);
+    return Number.isFinite(estimate) && estimate > 0 ? Math.min(99, Math.floor(estimate)) : 0;
+  }
+
   function sortTasks(todos, today = new Date()) {
     return [...(Array.isArray(todos) ? todos : [])].sort((a, b) => {
       const completedOrder = Number(a.completed === true) - Number(b.completed === true);
@@ -78,10 +83,22 @@
     return (Array.isArray(sessions) ? sessions : []).reduce((stats, session) => {
       if (session?.type !== "focus" || session.taskId !== taskId) return stats;
       stats.sessionCount += 1;
+      if (session.completed === true) stats.completedSessionCount += 1;
       stats.durationSeconds += Math.max(0, Number(session.durationSeconds) || 0);
       return stats;
-    }, { sessionCount: 0, durationSeconds: 0 });
+    }, { sessionCount: 0, completedSessionCount: 0, durationSeconds: 0 });
   }
 
-  return { normalizeDueDate, getTaskDueInfo, sortTasks, filterTasks, getTaskStats };
+  function getTaskPomodoroProgress(todo, sessions) {
+    const estimated = normalizePomodoroEstimate(todo?.estimatedPomodoros);
+    const completed = getTaskStats(todo?.id, sessions).completedSessionCount;
+    return {
+      estimated,
+      completed,
+      remaining: estimated ? Math.max(0, estimated - completed) : 0,
+      percentage: estimated ? Math.min(100, Math.round(completed / estimated * 100)) : 0
+    };
+  }
+
+  return { normalizeDueDate, getTaskDueInfo, normalizePomodoroEstimate, sortTasks, filterTasks, getTaskStats, getTaskPomodoroProgress };
 });
