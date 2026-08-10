@@ -11,7 +11,7 @@ const defaultState = {
   settings: { focus: 25, short: 5, long: 15, sound: true, notifications: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, weeklyTarget: 30, longBreakInterval: 4 },
   todos: [],
   sessions: [],
-  timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "" }
+  timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "", note: "" }
 };
 
 let state = loadState();
@@ -92,7 +92,8 @@ function normalizeState(saved, { stopTimer = false } = {}) {
       plannedSeconds: clampNumber(session?.plannedSeconds, 60, 24 * 60 * 60, 25 * 60),
       completed: session?.completed === true,
       taskId: typeof session?.taskId === "string" ? session.taskId : "",
-      taskTitle: String(session?.taskTitle || "自由专注").slice(0, 80)
+      taskTitle: String(session?.taskTitle || "自由专注").slice(0, 80),
+      note: String(session?.note || "").slice(0, 120)
     };
   }).filter(session => session.durationSeconds >= 60);
   const timerSource = saved.timer || {};
@@ -107,7 +108,8 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     running: !stopTimer && timerSource.running === true && Number.isFinite(endAt),
     endAt: !stopTimer && Number.isFinite(endAt) ? endAt : null,
     rounds: Math.floor(clampNumber(timerSource.rounds, 0, 100000, 0)),
-    taskId: typeof timerSource.taskId === "string" ? timerSource.taskId : ""
+    taskId: typeof timerSource.taskId === "string" ? timerSource.taskId : "",
+    note: String(timerSource.note || "").slice(0, 120)
   };
   return { settings, todos, sessions, timer };
 }
@@ -329,7 +331,8 @@ function completeTimer(natural) {
       plannedSeconds: state.timer.total,
       completed: natural,
       taskId: task?.id || "",
-      taskTitle: task?.title || "自由专注"
+      taskTitle: task?.title || "自由专注",
+      note: state.timer.note.trim()
     });
     state.timer.rounds += 1;
     showToast(`已记录 ${formatDuration(elapsed)}专注`);
@@ -347,6 +350,7 @@ function completeTimer(natural) {
   state.timer.mode = nextMode;
   state.timer.total = getModeDuration(nextMode);
   state.timer.remaining = state.timer.total;
+  if (finishedMode === "focus") state.timer.note = "";
   const shouldAutoStart = finishedMode === "focus" ? state.settings.autoBreak : state.settings.autoFocus;
   if (shouldAutoStart) {
     state.timer.running = true;
@@ -396,6 +400,8 @@ function renderTimer() {
   button.innerHTML = state.timer.running ? `<svg><use href="#i-pause"></use></svg><span>暂停计时</span>` : `<svg><use href="#i-play"></use></svg><span>${isFocus ? (remaining < state.timer.total ? "继续专注" : "开始专注") : "开始休息"}</span>`;
   $("#finishTimer").textContent = isFocus ? "完成本次" : "结束休息";
   $("#focusTask").disabled = state.timer.running || (isFocus && remaining < state.timer.total);
+  $("#focusNote").disabled = !isFocus;
+  if ($("#focusNote").value !== state.timer.note) $("#focusNote").value = state.timer.note;
   window.yanshiStorage?.updateTimerStatus?.({
     running: state.timer.running,
     mode: state.timer.mode,
@@ -657,7 +663,7 @@ function renderRecords() {
     const date = new Date(session.startedAt);
     return `<div class="record-row" data-id="${session.id}">
       <div class="record-date"><strong>${date.getDate()}</strong><span>${date.getMonth() + 1}月</span></div>
-      <div class="record-info"><strong>${escapeHTML(session.taskTitle || "自由专注")}</strong><span>${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })} · ${session.completed ? "完整番茄" : "提前完成"}</span></div>
+      <div class="record-info"><strong>${escapeHTML(session.taskTitle || "自由专注")}</strong><span>${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })} · ${session.completed ? "完整番茄" : "提前完成"}</span>${session.note ? `<small>${escapeHTML(session.note)}</small>` : ""}</div>
       <span class="record-duration">${formatDuration(session.durationSeconds, true)}</span>
       <button class="record-delete" aria-label="删除记录"><svg><use href="#i-trash"></use></svg></button>
     </div>`;
@@ -914,6 +920,7 @@ function bindEvents() {
   $("#resetTimer").addEventListener("click", resetTimer);
   $("#finishTimer").addEventListener("click", finishEarly);
   $("#focusTask").addEventListener("change", event => { state.timer.taskId = event.target.value; saveState(); });
+  $("#focusNote").addEventListener("input", event => { state.timer.note = event.target.value.slice(0, 120); saveState(); });
 
   $("#quickAddForm").addEventListener("submit", event => {
     event.preventDefault();

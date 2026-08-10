@@ -78,7 +78,8 @@
       if (session?.type !== "focus") return false;
       if (status === "completed" && session.completed !== true) return false;
       if (status === "early" && session.completed === true) return false;
-      return !normalizedQuery || String(session.taskTitle || "自由专注").toLocaleLowerCase("zh-CN").includes(normalizedQuery);
+      const searchable = `${session.taskTitle || "自由专注"} ${session.note || ""}`.toLocaleLowerCase("zh-CN");
+      return !normalizedQuery || searchable.includes(normalizedQuery);
     });
   }
 

@@ -19,9 +19,10 @@
   }
 
   function buildSessionCsv(sessions) {
-    const header = ["任务", "开始时间", "结束时间", "专注分钟", "完成方式"];
+    const header = ["任务", "备注", "开始时间", "结束时间", "专注分钟", "完成方式"];
     const rows = (Array.isArray(sessions) ? sessions : []).map(session => [
       session?.taskTitle || "自由专注",
+      session?.note || "",
       formatLocalDateTime(session?.startedAt),
       formatLocalDateTime(session?.endedAt),
       (Math.max(0, Number(session?.durationSeconds) || 0) / 60).toFixed(1),

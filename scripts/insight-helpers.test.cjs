@@ -44,10 +44,11 @@ test("专注记录可以按任务名称与完成状态组合筛选", () => {
   const sessions = [
     { id: "1", type: "focus", taskTitle: "数学真题", completed: true },
     { id: "2", type: "focus", taskTitle: "数学错题", completed: false },
-    { id: "3", type: "focus", taskTitle: "英语阅读", completed: true }
+    { id: "3", type: "focus", taskTitle: "英语阅读", note: "复盘长难句", completed: true }
   ];
   assert.deepEqual(filterFocusRecords(sessions, "completed", "数学").map(item => item.id), ["1"]);
   assert.deepEqual(filterFocusRecords(sessions, "early", "").map(item => item.id), ["2"]);
+  assert.deepEqual(filterFocusRecords(sessions, "completed", "长难句").map(item => item.id), ["3"]);
 });
 
 test("周目标进度会计算剩余时长并限制在百分之百", () => {

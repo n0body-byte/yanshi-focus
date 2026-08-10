@@ -130,6 +130,7 @@
                 <select id="focusTask"><option value="">暂不关联任务</option></select>
                 <svg><use href="#i-list"></use></svg>
               </div>
+              <input class="focus-note-input" id="focusNote" maxlength="120" placeholder="本次具体目标或备注（可选）" autocomplete="off" />
 
               <div class="timer-actions">
                 <button class="icon-button" id="resetTimer" title="重置计时"><svg><use href="#i-rotate"></use></svg></button>
@@ -200,7 +201,7 @@
             <div class="panel-heading">
               <div><p class="eyebrow">SESSIONS</p><h2>专注明细</h2></div>
               <div class="record-tools">
-                <label class="record-search"><svg><use href="#i-search"></use></svg><input id="recordSearch" type="search" maxlength="80" placeholder="搜索任务" aria-label="搜索专注记录" /></label>
+                <label class="record-search"><svg><use href="#i-search"></use></svg><input id="recordSearch" type="search" maxlength="120" placeholder="搜索任务或备注" aria-label="搜索专注记录" /></label>
                 <select id="recordFilter" aria-label="筛选专注记录"><option value="all">全部记录</option><option value="completed">完整番茄</option><option value="early">提前完成</option></select>
                 <button class="record-export" id="recordExport" title="导出当前筛选结果"><svg><use href="#i-download"></use></svg><span>导出 CSV</span></button>
                 <span class="record-count" id="recordCount">共 0 条</span>
