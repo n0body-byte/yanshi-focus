@@ -18,4 +18,8 @@ function shouldHideWindowOnClose(closeToTray, isQuitting) {
   return closeToTray === true && isQuitting !== true;
 }
 
-module.exports = { normalizeDesktopTimerStatus, shouldHideWindowOnClose };
+function resolveLaunchAtLogin(enabled, isPackaged) {
+  return isPackaged === true ? enabled === true : null;
+}
+
+module.exports = { normalizeDesktopTimerStatus, shouldHideWindowOnClose, resolveLaunchAtLogin };

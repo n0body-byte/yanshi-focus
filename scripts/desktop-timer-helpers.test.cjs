@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeDesktopTimerStatus, shouldHideWindowOnClose } = require("../desktop-timer-helpers.cjs");
+const { normalizeDesktopTimerStatus, shouldHideWindowOnClose, resolveLaunchAtLogin } = require("../desktop-timer-helpers.cjs");
 
 test("运行中的专注按设置启用防休眠与任务栏进度", () => {
   assert.deepEqual(normalizeDesktopTimerStatus({ running: true, mode: "focus", keepAwake: true, progress: 0.42 }), {
@@ -29,4 +29,10 @@ test("只有开启托盘且不是明确退出时才隐藏窗口", () => {
   assert.equal(shouldHideWindowOnClose(true, false), true);
   assert.equal(shouldHideWindowOnClose(false, false), false);
   assert.equal(shouldHideWindowOnClose(true, true), false);
+});
+
+test("开机启动只在打包应用中按用户选择启用", () => {
+  assert.equal(resolveLaunchAtLogin(true, true), true);
+  assert.equal(resolveLaunchAtLogin(false, true), false);
+  assert.equal(resolveLaunchAtLogin(true, false), null);
 });

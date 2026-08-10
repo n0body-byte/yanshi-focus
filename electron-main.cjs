@@ -2,7 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, powerSaveBlocker, shell, Tray
 const fs = require("fs");
 const path = require("path");
 const { createStorageManager } = require("./storage-manager.cjs");
-const { normalizeDesktopTimerStatus, shouldHideWindowOnClose } = require("./desktop-timer-helpers.cjs");
+const { normalizeDesktopTimerStatus, shouldHideWindowOnClose, resolveLaunchAtLogin } = require("./desktop-timer-helpers.cjs");
 
 // 固定数据目录，避免应用升级、安装路径变化或使用便携版时丢失历史记录。
 app.setPath("userData", process.env.YANSHI_DATA_DIR || path.join(app.getPath("appData"), "YanShi"));
@@ -43,6 +43,12 @@ function syncTray(enabled) {
     tray.destroy();
     tray = null;
   }
+}
+
+function syncLaunchAtLogin(enabled) {
+  const openAtLogin = resolveLaunchAtLogin(enabled, app.isPackaged);
+  if (openAtLogin === null) return;
+  app.setLoginItemSettings({ openAtLogin });
 }
 
 function sendStorageStatus(sender, status) {
@@ -107,6 +113,7 @@ ipcMain.on("timer:completed", () => {
   if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) mainWindow.flashFrame(true);
 });
 ipcMain.on("window:close-to-tray", (_event, enabled) => syncTray(enabled));
+ipcMain.on("app:launch-at-login", (_event, enabled) => syncLaunchAtLogin(enabled));
 
 ipcMain.handle("storage:info", () => storageManager.getInfo());
 ipcMain.handle("storage:list-backups", () => storageManager.listBackups().map(({ name, createdAt }) => ({ name, createdAt })));

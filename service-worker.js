@@ -1,4 +1,4 @@
-const CACHE = "yanshi-v9";
+const CACHE = "yanshi-v10";
 const ASSETS = ["./", "./index.html", "./styles.css", "./task-helpers.js", "./insight-helpers.js", "./timer-helpers.js", "./export-helpers.js", "./app.js", "./manifest.json", "./assets/icon.svg"];
 
 self.addEventListener("install", event => {

@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("yanshiStorage", {
   updateTimerStatus: status => ipcRenderer.send("timer:status", status),
   notifyCompletion: () => ipcRenderer.send("timer:completed"),
   setCloseToTray: enabled => ipcRenderer.send("window:close-to-tray", enabled),
+  setLaunchAtLogin: enabled => ipcRenderer.send("app:launch-at-login", enabled),
   onSaveStatus: callback => {
     const listener = (_event, status) => callback(status);
     ipcRenderer.on("storage:save-status", listener);
