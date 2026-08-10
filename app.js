@@ -1059,6 +1059,10 @@ function renderAll() {
 
 function init() {
   bindEvents();
+  window.yanshiStorage?.onSaveStatus?.(status => {
+    if (status?.recovered) showToast("数据保存已恢复正常");
+    else if (status?.ok === false) showToast(`数据暂未保存：${status.message || "请检查磁盘空间或目录权限"}`, { duration: 6000 });
+  });
   syncRunningTimer();
   renderAll();
   // 桌面版首次启动时立即创建数据文件，并把已有浏览器数据迁移进去。

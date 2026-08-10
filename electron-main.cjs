@@ -14,7 +14,13 @@ const storageManager = createStorageManager({ dataFile: DATA_FILE, backupDir: BA
 const TEST_MODE = process.env.YANSHI_TEST_MODE === "1";
 let mainWindow = null;
 let pendingData = null;
+let pendingDataSender = null;
 let saveTimer = null;
+let saveErrorActive = false;
+
+function sendStorageStatus(sender, status) {
+  if (sender && !sender.isDestroyed()) sender.send("storage:save-status", status);
+}
 let displaySleepBlockerId = null;
 
 function loadData() {
@@ -24,31 +30,40 @@ function loadData() {
 function flushData() {
   if (!pendingData) return;
   const content = pendingData;
+  const sender = pendingDataSender;
   pendingData = null;
+  pendingDataSender = null;
   clearTimeout(saveTimer);
   saveTimer = null;
   try {
     storageManager.saveData(content);
+    if (saveErrorActive) sendStorageStatus(sender, { ok: true, recovered: true });
+    saveErrorActive = false;
   } catch (error) {
     pendingData = content;
+    pendingDataSender = sender;
+    saveErrorActive = true;
+    sendStorageStatus(sender, { ok: false, message: error.message || "数据保存失败" });
     console.error("保存专注数据失败：", error.message);
   }
 }
 
-function queueDataSave(content) {
+function queueDataSave(content, sender) {
   try {
     storageManager.validateContent(content);
-  } catch {
+  } catch (error) {
+    sendStorageStatus(sender, { ok: false, message: error.message || "数据格式无效" });
     return;
   }
   pendingData = content;
+  pendingDataSender = sender;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushData, 250);
 }
 
 ipcMain.on("storage:load", event => { event.returnValue = loadData(); });
 ipcMain.on("storage:path", event => { event.returnValue = DATA_FILE; });
-ipcMain.on("storage:save", (_event, content) => queueDataSave(content));
+ipcMain.on("storage:save", (event, content) => queueDataSave(content, event.sender));
 
 ipcMain.on("timer:status", (_event, value) => {
   const status = normalizeDesktopTimerStatus(value);
