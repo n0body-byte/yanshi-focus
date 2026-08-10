@@ -26,6 +26,7 @@
       "task-helpers.js",
       "insight-helpers.js",
       "timer-helpers.js",
+      "export-helpers.js",
       "desktop-timer-helpers.cjs",
       "electron-main.cjs",
       "preload.cjs",

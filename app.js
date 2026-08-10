@@ -5,6 +5,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
 const { analyzeFocusSessions, filterFocusRecords } = window.YanShiInsightHelpers;
 const { getNextTimerMode } = window.YanShiTimerHelpers;
+const { buildSessionCsv } = window.YanShiExportHelpers;
 
 const defaultState = {
   settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, longBreakInterval: 4 },
@@ -658,6 +659,29 @@ function renderRecords() {
   }).join("");
 }
 
+async function exportVisibleRecords() {
+  const allSessions = focusSessions().sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
+  const sessions = filterFocusRecords(allSessions, recordFilter, recordQuery);
+  if (!sessions.length) return showToast("当前筛选条件下没有可导出的记录");
+  const content = buildSessionCsv(sessions);
+  try {
+    if (window.yanshiStorage?.isDesktop) {
+      const result = await window.yanshiStorage.exportCsv(content);
+      if (!result?.ok) return;
+    } else {
+      const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `研时专注明细-${localDateKey()}.csv`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+    showToast(`已导出 ${sessions.length} 条专注记录`);
+  } catch (error) {
+    showToast(error?.message || "导出 CSV 失败");
+  }
+}
+
 function deleteSession(id) {
   if (!confirm("确定删除这条专注记录吗？删除后今日累计也会相应减少。")) return;
   const index = state.sessions.findIndex(session => session.id === id);
@@ -941,6 +965,7 @@ function bindEvents() {
   });
   $("#recordSearch").addEventListener("input", event => { recordQuery = event.target.value; renderRecords(); });
   $("#recordFilter").addEventListener("change", event => { recordFilter = event.target.value; renderRecords(); });
+  $("#recordExport").addEventListener("click", exportVisibleRecords);
 
   $("#openSettings").addEventListener("click", openSettings);
   $("#closeSettings").addEventListener("click", closeSettings);

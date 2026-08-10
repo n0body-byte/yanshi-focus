@@ -239,6 +239,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .record-search svg { width: 13px; color: var(--sage); }
 .record-search input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font-size: 9px; }
 .record-tools select { height: 31px; border: 1px solid var(--line); border-radius: 9px; padding: 0 8px; color: var(--muted); background: var(--surface-2); outline: none; font-size: 9px; }
+.record-export { height: 31px; display: flex; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #bdd0c7; border-radius: 9px; color: var(--forest-2); background: #eef4f0; cursor: pointer; font-size: 9px; }
+.record-export:hover { border-color: var(--sage); background: var(--mint); }
+.record-export svg { width: 13px; }
 .records-list { margin-top: 14px; }
 .record-row { min-height: 65px; display: grid; grid-template-columns: 45px 1fr auto auto; align-items: center; gap: 14px; border-top: 1px solid #eeeeea; }
 .record-date { width: 42px; height: 42px; display: grid; place-items: center; align-content: center; border-radius: 12px; background: var(--surface-2); }

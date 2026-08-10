@@ -202,6 +202,7 @@
               <div class="record-tools">
                 <label class="record-search"><svg><use href="#i-search"></use></svg><input id="recordSearch" type="search" maxlength="80" placeholder="搜索任务" aria-label="搜索专注记录" /></label>
                 <select id="recordFilter" aria-label="筛选专注记录"><option value="all">全部记录</option><option value="completed">完整番茄</option><option value="early">提前完成</option></select>
+                <button class="record-export" id="recordExport" title="导出当前筛选结果"><svg><use href="#i-download"></use></svg><span>导出 CSV</span></button>
                 <span class="record-count" id="recordCount">共 0 条</span>
               </div>
             </div>
@@ -294,6 +295,7 @@
     <script src="task-helpers.js"></script>
     <script src="insight-helpers.js"></script>
     <script src="timer-helpers.js"></script>
+    <script src="export-helpers.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

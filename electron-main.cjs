@@ -77,6 +77,20 @@ ipcMain.handle("storage:export", async (_event, content) => {
   return { ok: true, path: result.filePath };
 });
 
+ipcMain.handle("storage:export-csv", async (_event, content) => {
+  if (typeof content !== "string" || Buffer.byteLength(content, "utf8") > 10 * 1024 * 1024) throw new Error("CSV 内容无效或超过 10 MB");
+  const date = new Date().toISOString().slice(0, 10);
+  const options = {
+    title: "导出专注明细",
+    defaultPath: path.join(app.getPath("documents"), `研时专注明细-${date}.csv`),
+    filters: [{ name: "CSV 表格", extensions: ["csv"] }]
+  };
+  const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+  if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+  fs.writeFileSync(result.filePath, content, "utf8");
+  return { ok: true, path: result.filePath };
+});
+
 ipcMain.handle("storage:import", async () => {
   const options = {
     title: "导入研时数据",
