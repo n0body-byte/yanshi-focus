@@ -247,6 +247,13 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .record-export { height: 31px; display: flex; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #bdd0c7; border-radius: 9px; color: var(--forest-2); background: #eef4f0; cursor: pointer; font-size: 9px; }
 .record-export:hover { border-color: var(--sage); background: var(--mint); }
 .record-export svg { width: 13px; }
+.manual-session-form { display: grid; grid-template-columns: 1.2fr .65fr 1fr 1.4fr auto auto auto; gap: 8px; align-items: end; margin-top: 16px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.manual-session-form label { display: grid; gap: 4px; color: var(--muted); font-size: 8px; }
+.manual-session-form input, .manual-session-form select { min-width: 0; height: 31px; border: 1px solid var(--line); border-radius: 8px; padding: 0 7px; background: white; outline: none; font-size: 9px; }
+.manual-session-form .manual-check { display: flex; align-items: center; gap: 5px; white-space: nowrap; padding-bottom: 8px; }
+.manual-session-form .manual-check input { width: 14px; height: 14px; }
+.manual-session-form button { height: 31px; padding: 0 10px; border: 0; border-radius: 8px; color: white; background: var(--forest-2); cursor: pointer; font-size: 9px; }
+.manual-session-form button:last-child { color: var(--muted); background: #e8ebe7; }
 .records-list { margin-top: 14px; }
 .record-row { min-height: 65px; display: grid; grid-template-columns: 45px 1fr auto auto; align-items: center; gap: 14px; border-top: 1px solid #eeeeea; }
 .record-date { width: 42px; height: 42px; display: grid; place-items: center; align-content: center; border-radius: 12px; background: var(--surface-2); }

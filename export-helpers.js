@@ -26,7 +26,7 @@
       formatLocalDateTime(session?.startedAt),
       formatLocalDateTime(session?.endedAt),
       (Math.max(0, Number(session?.durationSeconds) || 0) / 60).toFixed(1),
-      session?.completed === true ? "完整番茄" : "提前完成"
+      session?.source === "manual" ? "手动补记" : (session?.completed === true ? "完整番茄" : "提前完成")
     ]);
     return `\uFEFF${[header, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n")}`;
   }

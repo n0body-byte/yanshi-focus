@@ -91,6 +91,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
       durationSeconds: clampNumber(session?.durationSeconds, 0, 24 * 60 * 60, 0),
       plannedSeconds: clampNumber(session?.plannedSeconds, 60, 24 * 60 * 60, 25 * 60),
       completed: session?.completed === true,
+      source: session?.source === "manual" ? "manual" : "timer",
       taskId: typeof session?.taskId === "string" ? session.taskId : "",
       taskTitle: String(session?.taskTitle || "自由专注").slice(0, 80),
       note: String(session?.note || "").slice(0, 120)
@@ -662,7 +663,7 @@ function renderRecords() {
     const date = new Date(session.startedAt);
     return `<div class="record-row" data-id="${session.id}">
       <div class="record-date"><strong>${date.getDate()}</strong><span>${date.getMonth() + 1}月</span></div>
-      <div class="record-info"><strong>${escapeHTML(session.taskTitle || "自由专注")}</strong><span>${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })} · ${session.completed ? "完整番茄" : "提前完成"}</span>${session.note ? `<small>${escapeHTML(session.note)}</small>` : ""}</div>
+      <div class="record-info"><strong>${escapeHTML(session.taskTitle || "自由专注")}</strong><span>${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })} · ${session.source === "manual" ? "手动补记" : (session.completed ? "完整番茄" : "提前完成")}</span>${session.note ? `<small>${escapeHTML(session.note)}</small>` : ""}</div>
       <span class="record-duration">${formatDuration(session.durationSeconds, true)}</span>
       <button class="record-delete" aria-label="删除记录"><svg><use href="#i-trash"></use></svg></button>
     </div>`;
@@ -690,6 +691,37 @@ async function exportVisibleRecords() {
   } catch (error) {
     showToast(error?.message || "导出 CSV 失败");
   }
+}
+
+function openManualSessionForm() {
+  const defaultStart = new Date(Date.now() - 25 * 60000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  $("#manualStartedAt").value = defaultStart;
+  $("#manualTask").innerHTML = `<option value="">自由专注</option>${state.todos.map(todo => `<option value="${escapeHTML(todo.id)}">${escapeHTML(todo.title)}</option>`).join("")}`;
+  $("#manualSessionForm").classList.remove("hidden");
+  $("#manualDuration").focus();
+}
+
+function saveManualSession(event) {
+  event.preventDefault();
+  const startedAt = new Date($("#manualStartedAt").value);
+  const durationMinutes = Math.min(480, Math.max(1, Number($("#manualDuration").value) || 0));
+  if (Number.isNaN(startedAt.getTime()) || startedAt > new Date()) return showToast("请选择有效且不晚于当前时间的开始时间");
+  const endedAt = new Date(startedAt.getTime() + durationMinutes * 60000);
+  if (endedAt.getTime() > Date.now() + 60000) return showToast("开始时间加专注时长不能晚于当前时间");
+  const task = state.todos.find(todo => todo.id === $("#manualTask").value);
+  state.sessions.unshift({
+    id: uid("session"), type: "focus", source: "manual",
+    startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(),
+    durationSeconds: durationMinutes * 60, plannedSeconds: durationMinutes * 60,
+    completed: $("#manualCompleted").checked, taskId: task?.id || "", taskTitle: task?.title || "自由专注",
+    note: $("#manualNote").value.trim().slice(0, 120)
+  });
+  saveState();
+  $("#manualSessionForm").classList.add("hidden");
+  $("#manualNote").value = "";
+  renderSummary();
+  renderHistory();
+  showToast(`已补记 ${durationMinutes} 分钟专注`);
 }
 
 function deleteSession(id) {
@@ -1006,6 +1038,9 @@ function bindEvents() {
   $("#recordSearch").addEventListener("input", event => { recordQuery = event.target.value; renderRecords(); });
   $("#recordFilter").addEventListener("change", event => { recordFilter = event.target.value; renderRecords(); });
   $("#recordExport").addEventListener("click", exportVisibleRecords);
+  $("#openManualSession").addEventListener("click", openManualSessionForm);
+  $("#cancelManualSession").addEventListener("click", () => $("#manualSessionForm").classList.add("hidden"));
+  $("#manualSessionForm").addEventListener("submit", saveManualSession);
 
   $("#openSettings").addEventListener("click", openSettings);
   $("#closeSettings").addEventListener("click", closeSettings);

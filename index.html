@@ -204,9 +204,18 @@
                 <label class="record-search"><svg><use href="#i-search"></use></svg><input id="recordSearch" type="search" maxlength="120" placeholder="搜索任务或备注" aria-label="搜索专注记录" /></label>
                 <select id="recordFilter" aria-label="筛选专注记录"><option value="all">全部记录</option><option value="completed">完整番茄</option><option value="early">提前完成</option></select>
                 <button class="record-export" id="recordExport" title="导出当前筛选结果"><svg><use href="#i-download"></use></svg><span>导出 CSV</span></button>
+                <button class="record-export" id="openManualSession" title="补记未计时的专注"><svg><use href="#i-plus"></use></svg><span>补记</span></button>
                 <span class="record-count" id="recordCount">共 0 条</span>
               </div>
             </div>
+            <form class="manual-session-form hidden" id="manualSessionForm">
+              <label>开始时间<input id="manualStartedAt" type="datetime-local" required /></label>
+              <label>专注分钟<input id="manualDuration" type="number" min="1" max="480" value="25" required /></label>
+              <label>关联任务<select id="manualTask"><option value="">自由专注</option></select></label>
+              <label class="manual-note">备注<input id="manualNote" maxlength="120" placeholder="本次完成了什么" /></label>
+              <label class="manual-check"><input id="manualCompleted" type="checkbox" checked />按计划完成</label>
+              <button type="submit">保存补记</button><button type="button" id="cancelManualSession">取消</button>
+            </form>
             <div class="records-list" id="recordsList"></div>
           </article>
         </section>
