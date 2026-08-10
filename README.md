@@ -4,8 +4,8 @@
 
 ## Windows 桌面版
 
-- `YanShi-1.1.0-Setup.exe`：推荐使用，会创建桌面快捷方式。
-- `YanShi-1.1.0-Portable.exe`：无需安装，双击即可使用。
+- `YanShi-1.2.0-Setup.exe`：推荐使用，会创建桌面快捷方式。
+- `YanShi-1.2.0-Portable.exe`：无需安装，双击即可使用。
 
 两个版本共用同一份本地数据，历史记录会自动保存到：
 

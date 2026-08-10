@@ -1,6 +1,6 @@
 {
   "name": "yanshi-focus",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "面向考研备考的番茄钟、专注历史与待办清单",
   "main": "electron-main.cjs",
   "author": "YanShi",
