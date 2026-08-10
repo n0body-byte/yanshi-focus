@@ -1,8 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain, powerSaveBlocker, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, powerSaveBlocker, shell, Tray } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { createStorageManager } = require("./storage-manager.cjs");
-const { normalizeDesktopTimerStatus } = require("./desktop-timer-helpers.cjs");
+const { normalizeDesktopTimerStatus, shouldHideWindowOnClose } = require("./desktop-timer-helpers.cjs");
 
 // 固定数据目录，避免应用升级、安装路径变化或使用便携版时丢失历史记录。
 app.setPath("userData", process.env.YANSHI_DATA_DIR || path.join(app.getPath("appData"), "YanShi"));
@@ -17,6 +17,33 @@ let pendingData = null;
 let pendingDataSender = null;
 let saveTimer = null;
 let saveErrorActive = false;
+let tray = null;
+let closeToTray = false;
+let isQuitting = false;
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function syncTray(enabled) {
+  closeToTray = enabled === true;
+  if (closeToTray && !tray) {
+    tray = new Tray(path.join(__dirname, "build", "icon.ico"));
+    tray.setToolTip("研时 · 考研专注钟");
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: "显示研时", click: showMainWindow },
+      { type: "separator" },
+      { label: "退出研时", click: () => { isQuitting = true; app.quit(); } }
+    ]));
+    tray.on("double-click", showMainWindow);
+  } else if (!closeToTray && tray) {
+    tray.destroy();
+    tray = null;
+  }
+}
 
 function sendStorageStatus(sender, status) {
   if (sender && !sender.isDestroyed()) sender.send("storage:save-status", status);
@@ -79,6 +106,7 @@ ipcMain.on("timer:status", (_event, value) => {
 ipcMain.on("timer:completed", () => {
   if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) mainWindow.flashFrame(true);
 });
+ipcMain.on("window:close-to-tray", (_event, enabled) => syncTray(enabled));
 
 ipcMain.handle("storage:info", () => storageManager.getInfo());
 ipcMain.handle("storage:list-backups", () => storageManager.listBackups().map(({ name, createdAt }) => ({ name, createdAt })));
@@ -165,6 +193,11 @@ function createWindow() {
   }
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mainWindow.on("focus", () => mainWindow?.flashFrame(false));
+  mainWindow.on("close", event => {
+    if (!shouldHideWindowOnClose(closeToTray, isQuitting)) return;
+    event.preventDefault();
+    mainWindow.hide();
+  });
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
@@ -174,13 +207,20 @@ if (!hasLock) {
 } else {
   app.on("second-instance", () => {
     if (!mainWindow) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+    showMainWindow();
   });
 
   app.whenReady().then(createWindow);
-  app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    else showMainWindow();
+  });
   app.on("before-quit", () => {
+    isQuitting = true;
+    if (tray) {
+      tray.destroy();
+      tray = null;
+    }
     if (displaySleepBlockerId !== null && powerSaveBlocker.isStarted(displaySleepBlockerId)) powerSaveBlocker.stop(displaySleepBlockerId);
     displaySleepBlockerId = null;
     flushData();

@@ -14,4 +14,8 @@ function normalizeDesktopTimerStatus(value) {
   };
 }
 
-module.exports = { normalizeDesktopTimerStatus };
+function shouldHideWindowOnClose(closeToTray, isQuitting) {
+  return closeToTray === true && isQuitting !== true;
+}
+
+module.exports = { normalizeDesktopTimerStatus, shouldHideWindowOnClose };

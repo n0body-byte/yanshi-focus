@@ -8,7 +8,7 @@ const { getNextTimerMode, getRemainingSeconds } = window.YanShiTimerHelpers;
 const { buildSessionCsv } = window.YanShiExportHelpers;
 
 const defaultState = {
-  settings: { focus: 25, short: 5, long: 15, sound: true, notifications: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, weeklyTarget: 30, longBreakInterval: 4 },
+  settings: { focus: 25, short: 5, long: 15, sound: true, notifications: true, autoBreak: false, autoFocus: false, keepAwake: true, closeToTray: false, dailyTarget: 6, weeklyTarget: 30, longBreakInterval: 4 },
   todos: [],
   sessions: [],
   timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "", note: "" }
@@ -72,6 +72,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     autoBreak: saved.settings?.autoBreak === true,
     autoFocus: saved.settings?.autoFocus === true,
     keepAwake: saved.settings?.keepAwake !== false,
+    closeToTray: saved.settings?.closeToTray === true,
     longBreakInterval: Math.floor(clampNumber(saved.settings?.longBreakInterval, 2, 8, 4))
   };
   const todos = (Array.isArray(saved.todos) ? saved.todos : []).slice(0, 10000).map(todo => ({
@@ -822,6 +823,7 @@ function openSettings() {
   $("#autoBreak").checked = state.settings.autoBreak;
   $("#autoFocus").checked = state.settings.autoFocus;
   $("#keepAwake").checked = state.settings.keepAwake;
+  $("#closeToTray").checked = state.settings.closeToTray;
   $("#longBreakInterval").value = state.settings.longBreakInterval;
   $("#settingsModal").classList.add("open");
   $("#settingsModal").setAttribute("aria-hidden", "false");
@@ -978,6 +980,7 @@ async function saveSettings(event) {
     autoBreak: $("#autoBreak").checked,
     autoFocus: $("#autoFocus").checked,
     keepAwake: $("#keepAwake").checked,
+    closeToTray: $("#closeToTray").checked,
     longBreakInterval: Math.floor(Math.min(8, Math.max(2, Number($("#longBreakInterval").value) || 4)))
   };
   if (next.notifications && "Notification" in window && Notification.permission === "default") {
@@ -985,6 +988,7 @@ async function saveSettings(event) {
     $("#notificationEnabled").checked = next.notifications;
   }
   state.settings = next;
+  window.yanshiStorage?.setCloseToTray?.(next.closeToTray);
   if (!state.timer.running) {
     state.timer.total = getModeDuration(state.timer.mode);
     state.timer.remaining = state.timer.total;
@@ -1150,6 +1154,7 @@ function renderAll() {
 
 function init() {
   bindEvents();
+  window.yanshiStorage?.setCloseToTray?.(state.settings.closeToTray);
   window.yanshiStorage?.onSaveStatus?.(status => {
     if (status?.recovered) showToast("数据保存已恢复正常");
     else if (status?.ok === false) showToast(`数据暂未保存：${status.message || "请检查磁盘空间或目录权限"}`, { duration: 6000 });
