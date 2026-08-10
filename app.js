@@ -21,6 +21,7 @@ let taskFilter = "all";
 let taskQuery = "";
 let recordQuery = "";
 let recordFilter = "all";
+let editingSessionId = "";
 let deferredInstallPrompt = null;
 let toastTimeout = null;
 let toastActionHandler = null;
@@ -665,6 +666,7 @@ function renderRecords() {
       <div class="record-date"><strong>${date.getDate()}</strong><span>${date.getMonth() + 1}月</span></div>
       <div class="record-info"><strong>${escapeHTML(session.taskTitle || "自由专注")}</strong><span>${date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })} · ${session.source === "manual" ? "手动补记" : (session.completed ? "完整番茄" : "提前完成")}</span>${session.note ? `<small>${escapeHTML(session.note)}</small>` : ""}</div>
       <span class="record-duration">${formatDuration(session.durationSeconds, true)}</span>
+      <button class="record-edit" aria-label="编辑记录" title="编辑记录"><svg><use href="#i-edit"></use></svg></button>
       <button class="record-delete" aria-label="删除记录"><svg><use href="#i-trash"></use></svg></button>
     </div>`;
   }).join("");
@@ -694,9 +696,33 @@ async function exportVisibleRecords() {
 }
 
 function openManualSessionForm() {
+  editingSessionId = "";
   const defaultStart = new Date(Date.now() - 25 * 60000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   $("#manualStartedAt").value = defaultStart;
   $("#manualTask").innerHTML = `<option value="">自由专注</option>${state.todos.map(todo => `<option value="${escapeHTML(todo.id)}">${escapeHTML(todo.title)}</option>`).join("")}`;
+  $("#manualDuration").value = 25;
+  $("#manualNote").value = "";
+  $("#manualCompleted").checked = true;
+  $("#saveManualSession").textContent = "保存补记";
+  $("#manualSessionForm").classList.remove("hidden");
+  $("#manualDuration").focus();
+}
+
+function editSession(id) {
+  const session = state.sessions.find(item => item.id === id);
+  if (!session) return;
+  editingSessionId = id;
+  const localStartedAt = new Date(new Date(session.startedAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  $("#manualTask").innerHTML = `<option value="">自由专注</option>${state.todos.map(todo => `<option value="${escapeHTML(todo.id)}">${escapeHTML(todo.title)}</option>`).join("")}`;
+  if (session.taskId && !state.todos.some(todo => todo.id === session.taskId)) {
+    $("#manualTask").insertAdjacentHTML("beforeend", `<option value="${escapeHTML(session.taskId)}">${escapeHTML(session.taskTitle)}</option>`);
+  }
+  $("#manualStartedAt").value = localStartedAt;
+  $("#manualDuration").value = Math.max(1, Math.round(session.durationSeconds / 60));
+  $("#manualTask").value = session.taskId || "";
+  $("#manualNote").value = session.note || "";
+  $("#manualCompleted").checked = session.completed === true;
+  $("#saveManualSession").textContent = "保存修改";
   $("#manualSessionForm").classList.remove("hidden");
   $("#manualDuration").focus();
 }
@@ -708,20 +734,25 @@ function saveManualSession(event) {
   if (Number.isNaN(startedAt.getTime()) || startedAt > new Date()) return showToast("请选择有效且不晚于当前时间的开始时间");
   const endedAt = new Date(startedAt.getTime() + durationMinutes * 60000);
   if (endedAt.getTime() > Date.now() + 60000) return showToast("开始时间加专注时长不能晚于当前时间");
-  const task = state.todos.find(todo => todo.id === $("#manualTask").value);
-  state.sessions.unshift({
+  const selectedTaskId = $("#manualTask").value;
+  const selectedTaskTitle = $("#manualTask").selectedOptions[0]?.textContent || "自由专注";
+  const record = {
     id: uid("session"), type: "focus", source: "manual",
     startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(),
     durationSeconds: durationMinutes * 60, plannedSeconds: durationMinutes * 60,
-    completed: $("#manualCompleted").checked, taskId: task?.id || "", taskTitle: task?.title || "自由专注",
+    completed: $("#manualCompleted").checked, taskId: selectedTaskId, taskTitle: selectedTaskTitle,
     note: $("#manualNote").value.trim().slice(0, 120)
-  });
+  };
+  const editIndex = editingSessionId ? state.sessions.findIndex(item => item.id === editingSessionId) : -1;
+  if (editIndex >= 0) state.sessions[editIndex] = { ...state.sessions[editIndex], ...record, id: editingSessionId, source: state.sessions[editIndex].source };
+  else state.sessions.unshift(record);
   saveState();
   $("#manualSessionForm").classList.add("hidden");
   $("#manualNote").value = "";
   renderSummary();
   renderHistory();
-  showToast(`已补记 ${durationMinutes} 分钟专注`);
+  showToast(editIndex >= 0 ? "专注记录已更新" : `已补记 ${durationMinutes} 分钟专注`);
+  editingSessionId = "";
 }
 
 function deleteSession(id) {
@@ -1032,14 +1063,16 @@ function bindEvents() {
   }));
   $("#recordsList").addEventListener("click", event => {
     const button = event.target.closest(".record-delete");
+    const editButton = event.target.closest(".record-edit");
     const row = event.target.closest(".record-row");
     if (button && row) deleteSession(row.dataset.id);
+    if (editButton && row) editSession(row.dataset.id);
   });
   $("#recordSearch").addEventListener("input", event => { recordQuery = event.target.value; renderRecords(); });
   $("#recordFilter").addEventListener("change", event => { recordFilter = event.target.value; renderRecords(); });
   $("#recordExport").addEventListener("click", exportVisibleRecords);
   $("#openManualSession").addEventListener("click", openManualSessionForm);
-  $("#cancelManualSession").addEventListener("click", () => $("#manualSessionForm").classList.add("hidden"));
+  $("#cancelManualSession").addEventListener("click", () => { editingSessionId = ""; $("#manualSessionForm").classList.add("hidden"); });
   $("#manualSessionForm").addEventListener("submit", saveManualSession);
 
   $("#openSettings").addEventListener("click", openSettings);
