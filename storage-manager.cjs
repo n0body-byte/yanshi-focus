@@ -78,6 +78,15 @@ function createStorageManager({ dataFile, backupDir, maxBackups = 7, now = () =>
     return writeBackup(content, `yanshi-data-${timeStamp(now())}-manual.json`);
   }
 
+  function readBackup(name) {
+    if (typeof name !== "string") throw new Error("备份名称无效");
+    const backup = listBackups().find(item => item.name === name);
+    if (!backup) throw new Error("找不到指定备份");
+    const content = fs.readFileSync(backup.path, "utf8");
+    validateContent(content);
+    return content;
+  }
+
   function loadData() {
     try {
       if (!fs.existsSync(dataFile)) return null;
@@ -125,6 +134,7 @@ function createStorageManager({ dataFile, backupDir, maxBackups = 7, now = () =>
     createManualBackup,
     getInfo,
     listBackups,
+    readBackup,
     validateContent
   };
 }

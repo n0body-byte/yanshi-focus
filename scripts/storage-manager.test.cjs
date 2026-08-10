@@ -59,6 +59,18 @@ test("手动备份进入滚动备份列表", () => {
   }
 });
 
+test("只能按已存在的安全名称读取备份", () => {
+  const fixture = createFixture();
+  try {
+    const content = JSON.stringify({ todos: [{ id: "safe" }] });
+    const backupPath = fixture.manager.createManualBackup(content);
+    assert.equal(fixture.manager.readBackup(path.basename(backupPath)), content);
+    assert.throws(() => fixture.manager.readBackup("..\\yanshi-data.json"), /找不到指定备份/);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("损坏数据会被隔离且不会阻止启动", () => {
   const fixture = createFixture();
   try {

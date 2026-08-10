@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("yanshiStorage", {
   save: content => ipcRenderer.send("storage:save", content),
   getDataPath: () => ipcRenderer.sendSync("storage:path"),
   getInfo: () => ipcRenderer.invoke("storage:info"),
+  listBackups: () => ipcRenderer.invoke("storage:list-backups"),
+  readBackup: name => ipcRenderer.invoke("storage:read-backup", name),
   exportData: content => ipcRenderer.invoke("storage:export", content),
   exportCsv: content => ipcRenderer.invoke("storage:export-csv", content),
   importData: () => ipcRenderer.invoke("storage:import"),

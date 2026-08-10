@@ -325,6 +325,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .data-action-grid svg { flex: 0 0 auto; width: 21px; height: 21px; }
 .data-action-grid strong { display: block; font-size: 10px; }
 .data-action-grid small { display: block; margin-top: 3px; color: var(--muted); font-size: 8px; }
+.backup-restore-row { display: grid; grid-template-columns: 1fr auto; gap: 9px; margin-top: 10px; }
+.backup-restore-row select { min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface-2); outline: none; font-size: 9px; }
+.backup-restore-row button { height: 38px; padding: 0 14px; border: 0; border-radius: 10px; color: white; background: var(--forest-2); cursor: pointer; font-size: 9px; font-weight: 700; }
+.backup-restore-row button:disabled { opacity: .42; cursor: not-allowed; }
 .data-save-note { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 17px; padding: 12px 13px; border-radius: 11px; color: var(--forest-2); background: var(--mint); }
 .data-save-note > svg { flex: 0 0 auto; width: 16px; margin-top: 1px; }
 .data-save-note strong { display: block; font-size: 10px; }

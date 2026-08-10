@@ -285,6 +285,10 @@
               <button type="button" id="backupNow"><svg><use href="#i-shield"></use></svg><span><strong>立即备份</strong><small>创建一个手动快照</small></span></button>
               <button type="button" id="openDataFolder" disabled><svg><use href="#i-folder"></use></svg><span><strong>打开目录</strong><small>查看数据与自动备份</small></span></button>
             </div>
+            <div class="backup-restore-row">
+              <select id="backupRestoreSelect" aria-label="选择要恢复的备份"><option value="">选择一份备份…</option></select>
+              <button type="button" id="restoreBackup" disabled>恢复所选备份</button>
+            </div>
             <input class="hidden" id="importFileInput" type="file" accept="application/json,.json" />
           </div>
           <div class="data-save-note">

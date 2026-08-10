@@ -81,6 +81,8 @@ ipcMain.on("timer:completed", () => {
 });
 
 ipcMain.handle("storage:info", () => storageManager.getInfo());
+ipcMain.handle("storage:list-backups", () => storageManager.listBackups().map(({ name, createdAt }) => ({ name, createdAt })));
+ipcMain.handle("storage:read-backup", (_event, name) => ({ ok: true, content: storageManager.readBackup(name) }));
 
 ipcMain.handle("storage:export", async (_event, content) => {
   storageManager.validateContent(content);

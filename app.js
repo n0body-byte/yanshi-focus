@@ -782,6 +782,8 @@ async function refreshDataSafetyInfo() {
   const badge = $("#backupCountBadge");
   const folderButton = $("#openDataFolder");
   const storageLocation = $("#dataSaveLocation");
+  const restoreSelect = $("#backupRestoreSelect");
+  const restoreButton = $("#restoreBackup");
   if (!status || !badge) return;
   if (window.yanshiStorage?.isDesktop) {
     try {
@@ -790,6 +792,9 @@ async function refreshDataSafetyInfo() {
       status.textContent = `${formatBackupTime(info.latestBackupAt)} · 自动保留最近 ${info.maxBackups} 份`;
       storageLocation.textContent = `数据文件：${info.dataPath}`;
       folderButton.disabled = false;
+      const backups = await window.yanshiStorage.listBackups();
+      restoreSelect.innerHTML = `<option value="">选择一份备份…</option>${backups.map(item => `<option value="${escapeHTML(item.name)}">${formatBackupTime(item.createdAt).replace("最近备份：", "")} · ${item.name.includes("manual") ? "手动" : "自动"}</option>`).join("")}`;
+      restoreButton.disabled = true;
       return;
     } catch {
       status.textContent = "暂时无法读取桌面备份状态";
@@ -800,6 +805,22 @@ async function refreshDataSafetyInfo() {
   status.textContent = `${formatBackupTime(backups[0]?.createdAt)} · 保存在当前浏览器`;
   storageLocation.textContent = "数据与快照保存在当前浏览器中，请定期导出文件备份";
   folderButton.disabled = true;
+  restoreSelect.innerHTML = `<option value="">选择一份备份…</option>${backups.map(item => `<option value="${escapeHTML(item.id)}">${formatBackupTime(item.createdAt).replace("最近备份：", "")} · ${item.kind === "manual" ? "手动" : "自动"}</option>`).join("")}`;
+  restoreButton.disabled = true;
+}
+
+async function handleRestoreBackup() {
+  const id = $("#backupRestoreSelect").value;
+  if (!id) return;
+  try {
+    let content;
+    if (window.yanshiStorage?.isDesktop) content = (await window.yanshiStorage.readBackup(id))?.content;
+    else content = readBrowserBackups().find(item => item.id === id)?.content;
+    if (!content) throw new Error("找不到指定备份");
+    await applyImportedContent(content);
+  } catch (error) {
+    showToast(error?.message || "恢复备份失败");
+  }
 }
 
 async function handleExportData() {
@@ -993,6 +1014,8 @@ function bindEvents() {
   $("#exportData").addEventListener("click", handleExportData);
   $("#importData").addEventListener("click", handleImportData);
   $("#backupNow").addEventListener("click", handleBackupNow);
+  $("#backupRestoreSelect").addEventListener("change", event => { $("#restoreBackup").disabled = !event.target.value; });
+  $("#restoreBackup").addEventListener("click", handleRestoreBackup);
   $("#openDataFolder").addEventListener("click", handleOpenDataFolder);
   $("#importFileInput").addEventListener("change", async event => {
     const file = event.target.files?.[0];
