@@ -259,7 +259,11 @@
           <div class="settings-section">
             <label class="setting-row"><span><strong>完成提示音</strong><small>计时结束时播放轻柔提示音</small></span><input id="soundEnabled" class="toggle" type="checkbox" /></label>
             <label class="setting-row"><span><strong>自动开始休息</strong><small>专注结束后自动进入休息计时</small></span><input id="autoBreak" class="toggle" type="checkbox" /></label>
+            <label class="setting-row"><span><strong>自动开始下一轮专注</strong><small>休息结束后自动进入下一颗番茄</small></span><input id="autoFocus" class="toggle" type="checkbox" /></label>
             <label class="setting-row"><span><strong>专注时保持屏幕唤醒</strong><small>桌面版专注运行时阻止显示器自动休眠</small></span><input id="keepAwake" class="toggle" type="checkbox" /></label>
+          </div>
+          <div class="settings-section target-setting">
+            <label><span><strong>长休息间隔</strong><small>每完成多少颗番茄进入一次长休息</small></span><div><input id="longBreakInterval" type="number" min="2" max="8" /><b>轮</b></div></label>
           </div>
           <div class="settings-section target-setting">
             <label><span><strong>每日专注目标</strong><small>用于首页显示今日进度</small></span><div><input id="dailyTarget" type="number" min="1" max="16" /><b>小时</b></div></label>
@@ -289,6 +293,7 @@
     <div class="toast" id="toast" role="status"><svg><use href="#i-check"></use></svg><span></span><button class="hidden" id="toastAction" type="button">撤销</button></div>
     <script src="task-helpers.js"></script>
     <script src="insight-helpers.js"></script>
+    <script src="timer-helpers.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -4,9 +4,10 @@ const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
 const { analyzeFocusSessions, filterFocusRecords } = window.YanShiInsightHelpers;
+const { getNextTimerMode } = window.YanShiTimerHelpers;
 
 const defaultState = {
-  settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, keepAwake: true, dailyTarget: 6 },
+  settings: { focus: 25, short: 5, long: 15, sound: true, autoBreak: false, autoFocus: false, keepAwake: true, dailyTarget: 6, longBreakInterval: 4 },
   todos: [],
   sessions: [],
   timer: { mode: "focus", remaining: 25 * 60, total: 25 * 60, running: false, endAt: null, rounds: 0, taskId: "" }
@@ -65,7 +66,9 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     dailyTarget: clampNumber(saved.settings?.dailyTarget, 1, 16, defaultState.settings.dailyTarget),
     sound: saved.settings?.sound !== false,
     autoBreak: saved.settings?.autoBreak === true,
-    keepAwake: saved.settings?.keepAwake !== false
+    autoFocus: saved.settings?.autoFocus === true,
+    keepAwake: saved.settings?.keepAwake !== false,
+    longBreakInterval: Math.floor(clampNumber(saved.settings?.longBreakInterval, 2, 8, 4))
   };
   const todos = (Array.isArray(saved.todos) ? saved.todos : []).slice(0, 10000).map(todo => ({
     id: typeof todo?.id === "string" ? todo.id : uid("todo"),
@@ -336,11 +339,12 @@ function completeTimer(natural) {
     new Notification(finishedMode === "focus" ? "专注完成" : "休息结束", { body: finishedMode === "focus" ? "这段努力已经记录，休息一下吧。" : "准备开始下一轮专注。", icon: "assets/icon.svg" });
   }
 
-  const nextMode = finishedMode === "focus" ? (state.timer.rounds % 4 === 0 ? "long" : "short") : "focus";
+  const nextMode = getNextTimerMode(finishedMode, state.timer.rounds, state.settings.longBreakInterval);
   state.timer.mode = nextMode;
   state.timer.total = getModeDuration(nextMode);
   state.timer.remaining = state.timer.total;
-  if (state.settings.autoBreak && finishedMode === "focus") {
+  const shouldAutoStart = finishedMode === "focus" ? state.settings.autoBreak : state.settings.autoFocus;
+  if (shouldAutoStart) {
     state.timer.running = true;
     state.timer.endAt = Date.now() + state.timer.remaining * 1000;
     startTimerLoop();
@@ -717,7 +721,9 @@ function openSettings() {
   $("#dailyTarget").value = state.settings.dailyTarget;
   $("#soundEnabled").checked = state.settings.sound;
   $("#autoBreak").checked = state.settings.autoBreak;
+  $("#autoFocus").checked = state.settings.autoFocus;
   $("#keepAwake").checked = state.settings.keepAwake;
+  $("#longBreakInterval").value = state.settings.longBreakInterval;
   $("#settingsModal").classList.add("open");
   $("#settingsModal").setAttribute("aria-hidden", "false");
   refreshDataSafetyInfo();
@@ -848,7 +854,9 @@ function saveSettings(event) {
     dailyTarget: Math.min(16, Math.max(1, Number($("#dailyTarget").value) || 6)),
     sound: $("#soundEnabled").checked,
     autoBreak: $("#autoBreak").checked,
-    keepAwake: $("#keepAwake").checked
+    autoFocus: $("#autoFocus").checked,
+    keepAwake: $("#keepAwake").checked,
+    longBreakInterval: Math.floor(Math.min(8, Math.max(2, Number($("#longBreakInterval").value) || 4)))
   };
   state.settings = next;
   if (!state.timer.running) {
