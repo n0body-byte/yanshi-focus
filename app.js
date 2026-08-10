@@ -2,7 +2,7 @@ const STORAGE_KEY = "yanshi-focus-v1";
 const BROWSER_BACKUPS_KEY = "yanshi-focus-backups-v1";
 const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
-const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
+const { normalizeDueDate, getTaskDueInfo, sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
 const { analyzeFocusSessions, calculateGoalProgress, filterFocusRecords } = window.YanShiInsightHelpers;
 const { getNextTimerMode, getRemainingSeconds } = window.YanShiTimerHelpers;
 const { buildSessionCsv } = window.YanShiExportHelpers;
@@ -80,6 +80,7 @@ function normalizeState(saved, { stopTimer = false } = {}) {
     title: String(todo?.title || "未命名任务").slice(0, 80),
     completed: todo?.completed === true,
     pinned: todo?.pinned === true,
+    dueDate: normalizeDueDate(todo?.dueDate),
     createdAt: safeDate(todo?.createdAt),
     completedAt: todo?.completedAt ? safeDate(todo.completedAt) : null
   }));
@@ -220,6 +221,8 @@ function renderSummary() {
   const todaySeconds = focusSecondsForDay(todayKey);
   const todayCount = sessionsForDay(todayKey).length;
   const openTodos = state.todos.filter(todo => !todo.completed).length;
+  const overdueTodos = state.todos.filter(todo => getTaskDueInfo(todo).kind === "overdue").length;
+  const dueTodayTodos = state.todos.filter(todo => getTaskDueInfo(todo).kind === "today").length;
   const todayMinutes = Math.round(todaySeconds / 60);
   const targetMinutes = state.settings.dailyTarget * 60;
   const targetPct = Math.min(100, todayMinutes / targetMinutes * 100 || 0);
@@ -233,7 +236,9 @@ function renderSummary() {
   $("#targetProgress").style.width = `${targetPct}%`;
   $("#targetLabel").textContent = `${(todaySeconds / 3600).toFixed(todaySeconds >= 3600 ? 1 : 2).replace(/\.00$/, "")} / ${state.settings.dailyTarget}h`;
   $("#todayFocusHint").textContent = todayMinutes ? `已投入 ${formatDuration(todaySeconds, true)}，继续保持` : "从第一颗番茄开始";
-  $("#todoSummaryHint").textContent = openTodos ? "专注当下，一件一件完成" : "今天的任务已经清空";
+  $("#todoSummaryHint").textContent = overdueTodos
+    ? `${overdueTodos} 项任务已逾期，优先处理`
+    : (dueTodayTodos ? `${dueTodayTodos} 项任务今天截止` : (openTodos ? "专注当下，一件一件完成" : "今天的任务已经清空"));
 }
 
 function getModeDuration(mode) {
@@ -414,10 +419,10 @@ function renderTimer() {
   document.title = state.timer.running ? `${$("#timerDisplay").textContent} · ${isFocus ? "专注中" : "休息中"} | 研时` : "研时 · 考研专注钟";
 }
 
-function addTodo(title) {
+function addTodo(title, dueDate = "") {
   const cleanTitle = title.trim();
   if (!cleanTitle) return;
-  state.todos.unshift({ id: uid("todo"), title: cleanTitle, completed: false, pinned: false, createdAt: new Date().toISOString(), completedAt: null });
+  state.todos.unshift({ id: uid("todo"), title: cleanTitle, completed: false, pinned: false, dueDate: normalizeDueDate(dueDate), createdAt: new Date().toISOString(), completedAt: null });
   saveState();
   renderTodos();
   renderSummary();
@@ -470,38 +475,56 @@ function focusTodo(id) {
 
 function beginTodoEdit(id, item) {
   const todo = state.todos.find(candidate => candidate.id === id);
-  const text = item?.querySelector(".todo-text");
-  if (!todo || !text) return;
+  const main = item?.querySelector(".todo-main");
+  const actions = item?.querySelector(".todo-actions");
+  if (!todo || !main) return;
 
-  const input = document.createElement("input");
-  input.className = "todo-edit-input";
-  input.setAttribute("aria-label", "编辑任务名称");
-  input.maxLength = 80;
-  input.value = todo.title;
-  text.replaceWith(input);
-  input.focus();
-  input.select();
+  const editor = document.createElement("form");
+  editor.className = "todo-edit-fields";
+  const titleInput = document.createElement("input");
+  titleInput.className = "todo-edit-input";
+  titleInput.setAttribute("aria-label", "编辑任务名称");
+  titleInput.maxLength = 80;
+  titleInput.value = todo.title;
+  const dueInput = document.createElement("input");
+  dueInput.className = "todo-edit-date";
+  dueInput.type = "date";
+  dueInput.setAttribute("aria-label", "编辑截止日期");
+  dueInput.value = todo.dueDate || "";
+  const saveButton = document.createElement("button");
+  saveButton.type = "submit";
+  saveButton.textContent = "保存";
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "cancel";
+  cancelButton.textContent = "取消";
+  editor.append(titleInput, dueInput, saveButton, cancelButton);
+  main.replaceChildren(editor);
+  if (actions) actions.hidden = true;
+  titleInput.focus();
+  titleInput.select();
 
   let finished = false;
   const finish = (shouldSave) => {
     if (finished) return;
     finished = true;
-    const nextTitle = input.value.trim();
+    const nextTitle = titleInput.value.trim();
     if (shouldSave && nextTitle) {
       todo.title = nextTitle;
+      todo.dueDate = normalizeDueDate(dueInput.value);
       saveState();
-      showToast("任务名称已更新");
+      showToast("任务已更新");
     } else if (shouldSave && !nextTitle) {
       showToast("任务名称不能为空");
     }
     renderTodos();
   };
 
-  input.addEventListener("keydown", event => {
-    if (event.key === "Enter") { event.preventDefault(); finish(true); }
+  editor.addEventListener("submit", event => { event.preventDefault(); finish(true); });
+  editor.addEventListener("keydown", event => {
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finish(false); }
   });
-  input.addEventListener("blur", () => finish(true), { once: true });
+  cancelButton.addEventListener("click", () => finish(false));
 }
 
 function deleteTodo(id) {
@@ -529,16 +552,18 @@ function deleteTodo(id) {
 function todoHTML(todo, full = false) {
   const created = new Date(todo.createdAt);
   const stats = getTaskStats(todo.id, state.sessions);
+  const dueInfo = getTaskDueInfo(todo);
   const activity = stats.sessionCount
     ? `已专注 ${formatDuration(stats.durationSeconds, true)} · ${stats.sessionCount} 次`
     : `${created.getMonth() + 1} 月 ${created.getDate()} 日添加`;
   const meta = `${todo.pinned && !todo.completed ? "置顶 · " : ""}${activity}`;
-  const classes = [todo.completed ? "done" : "", todo.pinned && !todo.completed ? "pinned" : "", state.timer.taskId === todo.id ? "selected" : ""].filter(Boolean).join(" ");
+  const dueBadge = dueInfo.label ? `<b class="todo-due ${dueInfo.kind}">${dueInfo.label}</b>` : "";
+  const classes = [todo.completed ? "done" : "", todo.pinned && !todo.completed ? "pinned" : "", dueInfo.kind, state.timer.taskId === todo.id ? "selected" : ""].filter(Boolean).join(" ");
   return `<div class="todo-item ${classes}" data-id="${escapeHTML(todo.id)}">
     <button class="todo-check" data-action="toggle" aria-label="${todo.completed ? "标记为未完成" : "标记为完成"}"><svg><use href="#i-check"></use></svg></button>
     <div class="todo-main">
       <div class="todo-text" title="${escapeHTML(todo.title)}">${escapeHTML(todo.title)}</div>
-      ${full ? `<span class="todo-meta">${meta}</span>` : ""}
+      ${full || dueBadge ? `<span class="todo-meta">${dueBadge}${full ? `<span>${meta}</span>` : ""}</span>` : ""}
     </div>
     <div class="todo-actions">
       ${!todo.completed ? `<button class="todo-action ${todo.pinned ? "active" : ""}" data-action="pin" aria-label="${todo.pinned ? "取消置顶" : "置顶任务"}" title="${todo.pinned ? "取消置顶" : "置顶任务"}"><svg><use href="#i-pin"></use></svg></button>` : ""}
@@ -559,7 +584,9 @@ function renderTodos() {
   $("#quickTodoList").innerHTML = quickItems.length ? quickItems.map(todo => todoHTML(todo)).join("") : emptyTodoHTML("今天还没有待办");
 
   const filtered = filterTasks(sorted, taskFilter, taskQuery);
-  const emptyMessage = taskQuery ? `没有找到“${escapeHTML(taskQuery)}”` : (taskFilter === "done" ? "还没有完成的任务" : "任务清单是空的");
+  const emptyMessage = taskQuery
+    ? `没有找到“${escapeHTML(taskQuery)}”`
+    : ({ done: "还没有完成的任务", today: "今天没有到期或逾期任务" }[taskFilter] || "任务清单是空的");
   $("#fullTodoList").innerHTML = filtered.length ? filtered.map(todo => todoHTML(todo, true)).join("") : emptyTodoHTML(emptyMessage);
 
   const done = state.todos.filter(todo => todo.completed).length;
@@ -1016,8 +1043,9 @@ function bindEvents() {
   });
   $("#taskAddForm").addEventListener("submit", event => {
     event.preventDefault();
-    addTodo($("#taskAddInput").value);
+    addTodo($("#taskAddInput").value, $("#taskDueDate").value);
     $("#taskAddInput").value = "";
+    $("#taskDueDate").value = "";
     taskQuery = "";
     $("#taskSearch").value = "";
     taskFilter = "all";

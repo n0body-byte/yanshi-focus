@@ -165,6 +165,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .todo-list.compact { max-height: 318px; overflow: auto; padding-right: 2px; }
 .todo-item { display: flex; align-items: center; gap: 9px; padding: 11px 3px; border-bottom: 1px solid #eeeee8; border-radius: 10px; animation: item-in .2s ease; transition: background .18s; }
 .todo-item.pinned { background: rgba(231,238,232,.48); }
+.todo-item.overdue { background: rgba(230,91,61,.045); }
 .todo-item.selected { background: var(--mint); }
 @keyframes item-in { from { opacity: 0; transform: translateY(-4px); } }
 .todo-check { flex: 0 0 auto; width: 19px; height: 19px; border: 1.5px solid #b8c2bd; border-radius: 6px; display: grid; place-items: center; color: white; background: white; cursor: pointer; padding: 0; }
@@ -174,8 +175,13 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .todo-main { flex: 1; min-width: 0; }
 .todo-text { min-width: 0; line-height: 1.5; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo-item.done .todo-text { color: #a1a6a3; text-decoration: line-through; }
-.todo-meta { display: block; margin-top: 2px; color: #949c98; font-size: 9px; }
+.todo-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 3px; color: #949c98; font-size: 9px; }
+.todo-due { padding: 2px 6px; border-radius: 999px; color: var(--sage); background: var(--mint); font-size: 8px; font-weight: 700; }
+.todo-due.today, .todo-due.tomorrow { color: #9b5e22; background: #fff1d9; }
+.todo-due.overdue { color: #b54831; background: #fbe8e3; }
+.todo-due.done { color: #8e9692; background: #eeeeea; font-weight: 500; }
 .todo-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+.todo-actions[hidden] { display: none; }
 .todo-action { width: 27px; height: 27px; border: 0; border-radius: 8px; display: grid; place-items: center; color: #aab0ad; background: transparent; opacity: 0; cursor: pointer; transition: .15s; }
 .todo-action svg { width: 13px; }
 .todo-action.focus, .todo-action.active, .todo-item:hover .todo-action, .todo-action:focus-visible { opacity: 1; }
@@ -183,6 +189,11 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .todo-action:hover, .todo-action.active { color: var(--forest); background: var(--mint); }
 .todo-action.delete:hover { color: var(--tomato); background: #fbeae6; }
 .todo-edit-input { width: 100%; height: 30px; border: 1px solid #9fb5ab; border-radius: 8px; padding: 0 9px; outline: none; color: var(--ink); background: white; box-shadow: 0 0 0 3px rgba(94,128,115,.09); font-size: 11px; }
+.todo-edit-fields { display: flex; align-items: center; gap: 7px; }
+.todo-edit-fields .todo-edit-input { flex: 1; width: auto; min-width: 120px; box-shadow: none; }
+.todo-edit-date { width: 126px; height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 7px; outline: none; color: var(--ink); background: white; font-size: 10px; }
+.todo-edit-fields button { height: 30px; border: 0; border-radius: 8px; padding: 0 10px; color: white; background: var(--forest-2); cursor: pointer; font-size: 9px; font-weight: 700; }
+.todo-edit-fields button.cancel { color: var(--muted); background: #eeeee9; }
 .empty-state { min-height: 160px; display: grid; place-items: center; align-content: center; color: #a1a7a4; text-align: center; }
 .empty-state .empty-icon { width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center; color: var(--sage); background: var(--mint); margin-bottom: 10px; }
 .empty-state p { margin: 0; font-size: 11px; line-height: 1.7; }
@@ -282,6 +293,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .task-add-form:focus-within { border-color: #a9bcb3; box-shadow: 0 0 0 3px rgba(94,128,115,.09); }
 .task-add-form > span { width: 50px; display: grid; place-items: center; color: var(--sage); }
 .task-add-form input { flex: 1; height: 100%; border: 0; outline: 0; background: transparent; }
+.task-due-field { flex: 0 0 auto; height: 32px; display: flex; align-items: center; gap: 5px; padding: 0 9px; border-left: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+.task-due-field input { flex: 0 0 auto; width: 116px; padding: 0; color: var(--ink); font-size: 10px; }
 .task-add-form button { align-self: stretch; border: 0; padding: 0 25px; color: white; background: var(--forest-2); font-weight: 700; cursor: pointer; }
 .task-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 9px; }
 .task-toolbar-actions { display: flex; align-items: center; gap: 13px; }

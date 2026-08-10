@@ -233,12 +233,14 @@
             <form class="task-add-form" id="taskAddForm">
               <span><svg><use href="#i-plus"></use></svg></span>
               <input id="taskAddInput" maxlength="80" placeholder="例如：背诵英语单词 50 个" autocomplete="off" />
+              <label class="task-due-field" for="taskDueDate"><span>截止</span><input id="taskDueDate" type="date" aria-label="任务截止日期" /></label>
               <button>添加任务</button>
             </form>
             <div class="task-toolbar">
               <div class="task-filters">
                 <button class="active" data-task-filter="all">全部</button>
                 <button data-task-filter="open">待完成</button>
+                <button data-task-filter="today">今天</button>
                 <button data-task-filter="done">已完成</button>
               </div>
               <div class="task-toolbar-actions">
