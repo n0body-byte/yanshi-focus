@@ -10,5 +10,12 @@
     return rounds > 0 && rounds % interval === 0 ? "long" : "short";
   }
 
-  return { getNextTimerMode };
+  function getRemainingSeconds(endAt, now = Date.now()) {
+    const endTime = Number(endAt);
+    const currentTime = Number(now);
+    if (!Number.isFinite(endTime) || !Number.isFinite(currentTime)) return 0;
+    return Math.max(0, Math.ceil((endTime - currentTime) / 1000));
+  }
+
+  return { getNextTimerMode, getRemainingSeconds };
 });

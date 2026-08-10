@@ -4,7 +4,7 @@ const MAX_BACKUPS = 7;
 const RING_CIRCUMFERENCE = 2 * Math.PI * 116;
 const { sortTasks, filterTasks, getTaskStats } = window.YanShiTaskHelpers;
 const { analyzeFocusSessions, calculateGoalProgress, filterFocusRecords } = window.YanShiInsightHelpers;
-const { getNextTimerMode } = window.YanShiTimerHelpers;
+const { getNextTimerMode, getRemainingSeconds } = window.YanShiTimerHelpers;
 const { buildSessionCsv } = window.YanShiExportHelpers;
 
 const defaultState = {
@@ -251,13 +251,13 @@ function setMode(mode, force = false) {
 
 function syncRunningTimer() {
   if (!state.timer.running || !state.timer.endAt) return;
-  state.timer.remaining = Math.max(0, Math.ceil((state.timer.endAt - Date.now()) / 1000));
+  state.timer.remaining = getRemainingSeconds(state.timer.endAt);
   if (state.timer.remaining <= 0) completeTimer(true);
 }
 
 function toggleTimer() {
   if (state.timer.running) {
-    state.timer.remaining = Math.max(0, Math.ceil((state.timer.endAt - Date.now()) / 1000));
+    state.timer.remaining = getRemainingSeconds(state.timer.endAt);
     state.timer.running = false;
     state.timer.endAt = null;
     stopTimerLoop();
@@ -280,8 +280,7 @@ function startTimerLoop() {
   timerInterval = setInterval(() => {
     syncRunningTimer();
     renderTimer();
-    if (state.timer.running) saveState();
-  }, 500);
+  }, 1000);
 }
 
 function stopTimerLoop() {
@@ -310,7 +309,7 @@ function finishEarly() {
 }
 
 function getCurrentRemaining() {
-  return state.timer.running ? Math.max(0, Math.ceil((state.timer.endAt - Date.now()) / 1000)) : state.timer.remaining;
+  return state.timer.running ? getRemainingSeconds(state.timer.endAt) : state.timer.remaining;
 }
 
 function completeTimer(natural) {
@@ -1035,6 +1034,12 @@ function bindEvents() {
     deferredInstallPrompt = event;
     $("#installApp").classList.remove("hidden");
   });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    syncRunningTimer();
+    renderTimer();
+  });
+  window.addEventListener("pagehide", saveState);
   $("#installApp").addEventListener("click", async () => {
     if (!deferredInstallPrompt) return;
     deferredInstallPrompt.prompt();
